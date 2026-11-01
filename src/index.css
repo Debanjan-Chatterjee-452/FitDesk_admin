@@ -1,0 +1,157 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg: 244 245 239;
+    --surface: 255 255 255;
+    --elevated: 250 251 247;
+    --line: 227 231 222;
+    --ink: 23 33 28;
+    --muted: 101 113 106;
+    --faint: 142 153 146;
+    --primary: 18 60 49;
+    --primary-soft: 231 240 234;
+    --primary-strong: 10 42 34;
+    --primary-ink: 255 255 255;
+    --success: 40 121 92;
+    --warning: 184 121 37;
+    --danger: 196 73 61;
+    --info: 2 132 199;
+    --shadow-tint: 16 40 31;
+    color-scheme: light;
+  }
+
+  [data-theme='dark'] {
+    --bg: 10 18 15;
+    --surface: 18 30 26;
+    --elevated: 24 38 33;
+    --line: 31 51 44;
+    --ink: 232 240 236;
+    --muted: 154 168 162;
+    --faint: 107 122 116;
+    --primary: 74 222 128;
+    --primary-soft: 18 60 49;
+    --primary-strong: 40 121 92;
+    --primary-ink: 10 18 15;
+    --success: 74 222 128;
+    --warning: 251 191 36;
+    --danger: 251 113 133;
+    --info: 56 189 248;
+    --shadow-tint: 0 0 0;
+    color-scheme: dark;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-bg font-sans text-ink antialiased;
+    min-width: 320px;
+  }
+
+  ::selection {
+    background: rgb(var(--primary) / 0.24);
+    color: rgb(var(--ink));
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  input[type='date']::-webkit-calendar-picker-indicator {
+    opacity: 0.55;
+    cursor: pointer;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    border: 3px solid transparent;
+    border-radius: 999px;
+    background: rgb(var(--line));
+    background-clip: padding-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--muted));
+    background-clip: padding-box;
+  }
+}
+
+@layer components {
+  .field-label {
+    @apply mb-1.5 block text-[13px] font-semibold tracking-[-0.01em] text-ink;
+  }
+
+  .field-hint {
+    @apply mt-1.5 text-xs leading-5 text-muted;
+  }
+
+  .field-error {
+    @apply mt-1.5 text-xs font-medium leading-5 text-danger;
+  }
+
+  .surface-grid {
+    background-image:
+      linear-gradient(to right, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+    background-size: 36px 36px;
+  }
+
+  .skeleton {
+    @apply relative overflow-hidden rounded-xl bg-elevated;
+  }
+
+  .skeleton::after {
+    content: '';
+    @apply absolute inset-0 -translate-x-full animate-shimmer;
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      rgb(255 255 255 / 0.65),
+      transparent
+    );
+  }
+
+  .focus-ring {
+    @apply outline-none ring-offset-2 ring-offset-bg focus-visible:ring-2 focus-visible:ring-primary/40;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .text-pretty {
+    text-wrap: pretty;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

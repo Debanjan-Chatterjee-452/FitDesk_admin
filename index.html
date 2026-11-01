@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en-IN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+    <meta
+      name="description"
+      content="FitDesk Admin is the owner's control room for members, payments, packages, attendance, and gym closures."
+    />
+    <meta name="theme-color" content="#0A2A22" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>FitDesk Admin — Gym control room</title>
+    <script>
+      ;(function () {
+        try {
+          var saved = localStorage.getItem('fitdesk.theme')
+          var mode = saved === 'light' || saved === 'dark' ? saved : null
+          if (!mode) {
+            mode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+          }
+          document.documentElement.setAttribute('data-theme', mode)
+          document.documentElement.style.colorScheme = mode
+          document.documentElement.classList.toggle('dark', mode === 'dark')
+        } catch (e) {}
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
