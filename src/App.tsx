@@ -17,6 +17,7 @@ import { PackagesPage } from '@/pages/PackagesPage'
 import { PaymentSettingsPage } from '@/pages/PaymentSettingsPage'
 import { AttendancePage } from '@/pages/AttendancePage'
 import { ProfilePage } from '@/pages/ProfilePage'
+import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
 import { JoinRequestsPage } from '@/pages/JoinRequestsPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 
@@ -104,6 +105,7 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/onboarding" element={<OnboardingRoute />} />
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />

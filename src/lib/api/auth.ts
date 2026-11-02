@@ -133,6 +133,21 @@ export async function signOutAdmin(): Promise<void> {
   if (error) throw toAppError(error)
 }
 
+export async function requestPasswordReset(email: string): Promise<void> {
+  const supabase = getSupabase()
+  const redirectTo = `${window.location.origin}/reset-password`
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+    redirectTo,
+  })
+  if (error) throw toAppError(error)
+}
+
+export async function updatePassword(password: string): Promise<void> {
+  const supabase = getSupabase()
+  const { error } = await supabase.auth.updateUser({ password })
+  if (error) throw toAppError(error)
+}
+
 export async function refreshAdminProfile(userId: string): Promise<AdminProfile> {
   return loadProfile(userId)
 }

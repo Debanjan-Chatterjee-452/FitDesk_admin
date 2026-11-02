@@ -11,6 +11,7 @@ import {
   Eye,
   FileText,
   LoaderCircle,
+  LogOut,
   Mail,
   Save,
   ShieldCheck,
@@ -22,6 +23,7 @@ import {
 import { toast } from 'sonner'
 import type { AdminProfile } from '@/types'
 import { useAuth } from '@/context/AuthContext'
+import { requestPasswordReset } from '@/lib/api/auth'
 import { getDocumentSignedUrl, getMyProfile, saveMyProfile } from '@/lib/api/profile'
 import { toAppError } from '@/lib/errors'
 import { todayInputValue } from '@/lib/format'
@@ -220,7 +222,7 @@ function DocumentPanel({
 }
 
 export function ProfilePage() {
-  const { session, refreshProfile } = useAuth()
+  const { session, refreshProfile, signOut } = useAuth()
   const queryClient = useQueryClient()
   const [documentFile, setDocumentFile] = useState<File | null>(null)
 
@@ -427,12 +429,36 @@ export function ProfilePage() {
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
                 <ShieldCheck className="h-4 w-4" />
               </span>
-              <div>
-                <p className="text-[12px] font-semibold text-ink">Preset password</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-[12px] font-semibold text-ink">Password & session</p>
                 <p className="mt-1 text-[10px] leading-5 text-muted">
-                  Your login password is set by the developer and cannot be changed here. Contact your
-                  developer if it needs to be reset.
+                  Your password is managed by Supabase. Request a secure reset link by email, or sign out of this device.
                 </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={<Mail className="h-4 w-4" />}
+                    onClick={async () => {
+                      try {
+                        await requestPasswordReset(session?.email ?? '')
+                        toast.success('Password reset email sent. Check your inbox.')
+                      } catch (error) {
+                        toast.error(toAppError(error).message)
+                      }
+                    }}
+                  >
+                    Send reset link
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={<LogOut className="h-4 w-4" />}
+                    onClick={() => void signOut()}
+                  >
+                    Sign out
+                  </Button>
+                </div>
               </div>
             </div>
           </Card>
