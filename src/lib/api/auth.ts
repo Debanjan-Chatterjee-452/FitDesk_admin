@@ -142,6 +142,12 @@ export async function requestPasswordReset(email: string): Promise<void> {
   if (error) throw toAppError(error)
 }
 
+export async function exchangeEmailLink(code: string): Promise<void> {
+  const trimmed = code.trim()
+  if (!trimmed) throw new AppError('EMAIL_LINK_INVALID', 'This email link is incomplete. Request a new one.')
+  const { error } = await getSupabase().auth.exchangeCodeForSession(trimmed)
+  if (error) throw toAppError(error)
+}
 export async function updatePassword(password: string): Promise<void> {
   const supabase = getSupabase()
   const { error } = await supabase.auth.updateUser({ password })

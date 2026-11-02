@@ -51,6 +51,32 @@ export function ResetPasswordPage() {
     const supabase = (window as unknown as { __supabase?: unknown }).__supabase
     void supabase
     const check = async () => {
+      const params = new URLSearchParams(window.location.search)
+      const linkErrorParam = params.get('error_description') ?? params.get('error')
+      const code = params.get('code')
+
+      if (linkErrorParam) {
+        if (!active) return
+        setLinkError('This password reset link is invalid or has expired. Request a new one.')
+        setPhase('invalid')
+        return
+      }
+
+      if (code) {
+        try {
+          const { exchangeEmailLink } = await import('@/lib/api/auth')
+          await exchangeEmailLink(code)
+          if (!active) return
+          window.history.replaceState({}, '', '/reset-password')
+          setPhase('ready')
+        } catch (error) {
+          if (!active) return
+          setLinkError(toAppError(error).message)
+          setPhase('invalid')
+        }
+        return
+      }
+
       try {
         const { getSupabase } = await import('@/lib/supabase')
         const client = getSupabase()
