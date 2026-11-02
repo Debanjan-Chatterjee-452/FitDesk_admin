@@ -9,6 +9,7 @@ export class AppError extends Error {
 }
 
 const FRIENDLY_MESSAGES: Record<string, string> = {
+  GYM_SUSPENDED: 'This gym is suspended. Contact FitDesk support.',
   AUTH_REQUIRED: 'Your session has expired. Please sign in again.',
   ADMIN_REQUIRED: 'This account does not have admin access.',
   GYM_NOT_FOUND: 'The gym could not be found.',

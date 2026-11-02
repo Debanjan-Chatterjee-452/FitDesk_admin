@@ -6,17 +6,21 @@ import {
   LogOut,
   QrCode,
   ShieldCheck,
+  UserPlus,
   UserRound,
   UsersRound,
 } from 'lucide-react'
 import type { AdminProfile } from '@/types'
 import { cn } from '@/lib/format'
+import { useQuery } from '@tanstack/react-query'
+import { pendingJoinRequestCount } from '@/lib/api/joinRequests'
 import { Avatar } from '@/components/ui/Avatar'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 
 const items = [
   { to: '/dashboard', label: 'Overview', icon: LayoutDashboard },
   { to: '/members', label: 'Members', icon: UsersRound },
+  { to: '/join-requests', label: 'Join requests', icon: UserPlus },
   { to: '/packages', label: 'Packages', icon: Layers3 },
   { to: '/payments', label: 'Payment settings', icon: CreditCard },
   { to: '/attendance', label: 'Attendance QR', icon: QrCode },
@@ -26,14 +30,23 @@ const items = [
 export function SidebarContent({
   profile,
   email,
+  gymName,
   onNavigate,
   onSignOut,
 }: {
   profile: AdminProfile
   email: string
+  gymName?: string | null
   onNavigate?: () => void
   onSignOut: () => void
 }) {
+  const pendingQuery = useQuery({
+    queryKey: ['fitdesk-admin', 'join-requests-count'],
+    queryFn: pendingJoinRequestCount,
+    staleTime: 30_000,
+  })
+  const pendingCount = pendingQuery.data ?? 0
+
   return (
     <div className="flex h-full flex-col bg-[#0A2A22] text-white">
       <div className="flex items-center gap-3 px-6 pb-8 pt-7">
@@ -53,7 +66,7 @@ export function SidebarContent({
             <ShieldCheck className="h-3.5 w-3.5 text-lime" />
             Owner access
           </div>
-          <p className="mt-1.5 truncate text-xs font-medium text-white/85">FitDesk Performance Club</p>
+          <p className="mt-1.5 truncate text-xs font-medium text-white/85">{gymName ?? 'FitDesk Performance Club'}</p>
         </div>
       </div>
 
@@ -85,6 +98,11 @@ export function SidebarContent({
                   strokeWidth={2}
                 />
                 {item.label}
+                {item.to === '/join-requests' && pendingCount > 0 ? (
+                  <span className="ml-auto inline-flex min-w-[18px] items-center justify-center rounded-full bg-lime px-1.5 text-[10px] font-bold text-primary-ink">
+                    {pendingCount}
+                  </span>
+                ) : null}
               </>
             )}
           </NavLink>

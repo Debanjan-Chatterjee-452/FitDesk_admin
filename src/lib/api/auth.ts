@@ -1,4 +1,4 @@
-import type { AdminProfile } from '@/types'
+import type { AdminProfile, GymSettings } from '@/types'
 import { AppError, toAppError } from '../errors'
 import { getSupabase } from '../supabase'
 import { callRpc } from './client'
@@ -9,6 +9,12 @@ export interface AdminSession {
   profile: AdminProfile
   /** False while a brand-new owner still has to register their gym. */
   isAdmin: boolean
+  gymId: string | null
+  gymName: string | null
+  gymPublicId: string | null
+  gymJoinCode: string | null
+  gymSuspended: boolean
+  isPlatformOwner: boolean
 }
 
 async function loadProfile(userId: string): Promise<AdminProfile> {
@@ -29,6 +35,48 @@ async function assertAdmin(): Promise<boolean> {
   return data === true
 }
 
+const EMPTY_GYM_CONTEXT: {
+  gymId: string | null
+  gymName: string | null
+  gymPublicId: string | null
+  gymJoinCode: string | null
+  gymSuspended: boolean
+} = {
+  gymId: null,
+  gymName: null,
+  gymPublicId: null,
+  gymJoinCode: null,
+  gymSuspended: false,
+}
+
+async function loadGymContext(): Promise<typeof EMPTY_GYM_CONTEXT & { gymSuspended: boolean }> {
+  try {
+    const settings = await callRpc<GymSettings>('admin_get_gym_settings')
+    return {
+      gymId: settings.gym_id,
+      gymName: settings.name,
+      gymPublicId: settings.public_id,
+      gymJoinCode: settings.join_code,
+      gymSuspended: false,
+    }
+  } catch (error) {
+    const appError = toAppError(error)
+    if (appError.code === 'GYM_SUSPENDED') {
+      return { ...EMPTY_GYM_CONTEXT, gymSuspended: true }
+    }
+    throw appError
+  }
+}
+
+async function loadPlatformOwner(): Promise<boolean> {
+  try {
+    const result = await callRpc<{ is_platform_owner: boolean }>('platform_me')
+    return result?.is_platform_owner === true
+  } catch {
+    return false
+  }
+}
+
 export async function signInAdmin(email: string, password: string): Promise<AdminSession> {
   const supabase = getSupabase()
   const { data, error } = await supabase.auth.signInWithPassword({
@@ -41,11 +89,16 @@ export async function signInAdmin(email: string, password: string): Promise<Admi
 
   const isAdmin = await assertAdmin()
 
+  const gymContext = isAdmin ? await loadGymContext() : EMPTY_GYM_CONTEXT
+  const isPlatformOwner = isAdmin ? await loadPlatformOwner() : false
+
   return {
     userId: data.user.id,
     email: data.user.email ?? email,
     profile: await loadProfile(data.user.id),
     isAdmin,
+    ...gymContext,
+    isPlatformOwner,
   }
 }
 
@@ -62,11 +115,16 @@ export async function restoreAdminSession(): Promise<AdminSession | null> {
 
   const isAdmin = await assertAdmin()
 
+  const gymContext = isAdmin ? await loadGymContext() : EMPTY_GYM_CONTEXT
+  const isPlatformOwner = isAdmin ? await loadPlatformOwner() : false
+
   return {
     userId: data.session.user.id,
     email: data.session.user.email ?? '',
     profile: await loadProfile(data.session.user.id),
     isAdmin,
+    ...gymContext,
+    isPlatformOwner,
   }
 }
 

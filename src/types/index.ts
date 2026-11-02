@@ -22,15 +22,22 @@ export interface AdminProfile {
 
 export interface GymSettings {
   gym_id: string
+  public_id: string | null
+  join_code: string | null
+  owner_id: string | null
   slug: string
   name: string
   upi_id: string | null
   upi_payee_name: string | null
   payment_qr_path: string | null
   is_open: boolean
+  is_active: boolean
+  suspended_at: string | null
+  suspension_reason: string | null
   shutter_changed_at: string | null
   attendance_qr_months: number
   attendance_qr_rotated_at: string | null
+  created_at: string
   updated_at: string
 }
 
@@ -117,6 +124,7 @@ export interface MemberRow {
   pending_since: string | null
   pending_plan_name: string | null
   activity_at: string
+  total_count?: number
 }
 
 export interface RenewalQuote {

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { Toaster } from 'sonner'
@@ -17,12 +17,14 @@ import { PackagesPage } from '@/pages/PackagesPage'
 import { PaymentSettingsPage } from '@/pages/PaymentSettingsPage'
 import { AttendancePage } from '@/pages/AttendancePage'
 import { ProfilePage } from '@/pages/ProfilePage'
+import { JoinRequestsPage } from '@/pages/JoinRequestsPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 
 function ProtectedRoute() {
-  const { session, loading } = useAuth()
+  const { session, loading, signOut } = useAuth()
   if (loading) return <FullPageLoader />
   if (!session) return <Navigate to="/login" replace />
+  if (session.gymSuspended) return <SuspendedGymScreen onSignOut={signOut} />
   if (!session.isAdmin) return <Navigate to="/onboarding" replace />
   return <AppShell />
 }
@@ -53,6 +55,33 @@ function BootErrorScreen() {
   )
 }
 
+function SuspendedGymScreen({ onSignOut }: { onSignOut: () => Promise<void> }) {
+  const [signingOut, setSigningOut] = useState(false)
+  return (
+    <div className="grid min-h-screen place-items-center bg-bg p-6">
+      <div className="w-full max-w-md rounded-2xl border border-line bg-white p-7 shadow-card">
+        <div className="mb-5 grid h-11 w-11 place-items-center rounded-xl bg-danger-soft text-danger">
+          <AlertTriangle className="h-5 w-5" />
+        </div>
+        <h1 className="text-xl font-semibold tracking-[-0.03em]">This gym is suspended</h1>
+        <p className="mt-2 text-sm leading-6 text-muted">
+          This gym is suspended. Contact FitDesk support.
+        </p>
+        <Button
+          className="mt-5"
+          icon={<RefreshCw className="h-4 w-4" />}
+          loading={signingOut}
+          onClick={() => {
+            setSigningOut(true)
+            void onSignOut().finally(() => setSigningOut(false))
+          }}
+        >
+          Sign out
+        </Button>
+      </div>
+    </div>
+  )
+}
 function LoginRedirect() {
   return <Navigate to="/login" replace />
 }
@@ -80,6 +109,7 @@ export default function App() {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/members" element={<MembersPage />} />
+          <Route path="/join-requests" element={<JoinRequestsPage />} />
           <Route path="/packages" element={<PackagesPage />} />
           <Route path="/payments" element={<PaymentSettingsPage />} />
           <Route path="/attendance" element={<AttendancePage />} />

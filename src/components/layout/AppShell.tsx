@@ -36,6 +36,7 @@ export function AppShell() {
         <SidebarContent
           profile={session.profile}
           email={session.email}
+          gymName={session.gymName}
           onSignOut={() => setSignOutOpen(true)}
         />
       </aside>
@@ -62,6 +63,7 @@ export function AppShell() {
             <SidebarContent
               profile={session.profile}
               email={session.email}
+              gymName={session.gymName}
               onNavigate={() => setDrawerOpen(false)}
               onSignOut={() => {
                 setDrawerOpen(false)

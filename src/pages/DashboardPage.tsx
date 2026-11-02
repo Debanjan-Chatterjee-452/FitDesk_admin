@@ -17,6 +17,7 @@ import {
 import { useAuth } from '@/context/AuthContext'
 import { getDashboardStats, getGymSettings } from '@/lib/api/dashboard'
 import { listPendingPayments } from '@/lib/api/members'
+import { toast } from 'sonner'
 import { cn, formatDateOnly, formatInr, formatNumber, greeting } from '@/lib/format'
 import { adminKeys } from '@/lib/queryKeys'
 import { Badge } from '@/components/ui/Badge'
@@ -93,6 +94,45 @@ export function DashboardPage() {
       />
 
       {statsQuery.isError || gymQuery.isError ? <DashboardError onRetry={retryAll} /> : null}
+
+      {gym ? (
+        <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted">Gym identity</p>
+            <p className="mt-1 truncate text-sm font-semibold text-ink">{gym.name}</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {gym.public_id ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  void navigator.clipboard.writeText(gym.public_id ?? '').then(
+                    () => toast.success('Gym ID copied'),
+                    () => toast.error('Could not copy'),
+                  )
+                }}
+              >
+                Gym ID: {gym.public_id}
+              </Button>
+            ) : null}
+            {gym.join_code ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  void navigator.clipboard.writeText(gym.join_code ?? '').then(
+                    () => toast.success('Join code copied'),
+                    () => toast.error('Could not copy'),
+                  )
+                }}
+              >
+                Join code: {gym.join_code}
+              </Button>
+            ) : null}
+          </div>
+        </Card>
+      ) : null}
 
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <StatCard

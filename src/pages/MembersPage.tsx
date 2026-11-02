@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -19,7 +19,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { MemberRow, PaymentReviewResult } from '@/types'
-import { cancelMembership, listMembers, pauseMembership, resumeMembership, reviewPayment } from '@/lib/api/members'
+import { cancelMembership, getMemberStatusCounts, listMembersPage, pauseMembership, resumeMembership, reviewPayment } from '@/lib/api/members'
 import { dedupeByKey } from '@/lib/dedupe'
 import { toAppError } from '@/lib/errors'
 import {
@@ -162,8 +162,11 @@ function MemberActions({
 export function MembersPage() {
   const [params] = useSearchParams()
   const initialFilter: Filter = params.get('payment') === 'pending' ? 'pending' : 'all'
+  const PAGE_SIZE = 50
   const [filter, setFilter] = useState<Filter>(initialFilter)
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [offset, setOffset] = useState(0)
   const [selected, setSelected] = useState<MemberRow | null>(null)
   const [decision, setDecision] = useState<Decision | null>(null)
   const [note, setNote] = useState('')
@@ -171,9 +174,30 @@ export function MembersPage() {
   const [actionReason, setActionReason] = useState('')
   const queryClient = useQueryClient()
 
+  useEffect(() => {
+    const handle = window.setTimeout(() => setDebouncedSearch(search.trim()), 300)
+    return () => window.clearTimeout(handle)
+  }, [search])
+
+  useEffect(() => {
+    setOffset(0)
+  }, [filter, debouncedSearch])
+
   const membersQuery = useQuery({
-    queryKey: adminKeys.members(),
-    queryFn: listMembers,
+    queryKey: [...adminKeys.members(), filter, debouncedSearch, offset],
+    queryFn: () =>
+      listMembersPage({
+        search: debouncedSearch || null,
+        status: filter,
+        limit: PAGE_SIZE,
+        offset,
+      }),
+  })
+
+  const countsQuery = useQuery({
+    queryKey: [...adminKeys.members(), 'counts'],
+    queryFn: getMemberStatusCounts,
+    staleTime: 20_000,
   })
 
   const mutation = useMutation({
@@ -202,6 +226,7 @@ export function MembersPage() {
       setNote('')
       emitAdminSync('payments')
       void queryClient.invalidateQueries({ queryKey: adminKeys.members() })
+      void queryClient.invalidateQueries({ queryKey: [...adminKeys.members(), 'counts'] })
       void queryClient.invalidateQueries({ queryKey: adminKeys.pendingPayments() })
       void queryClient.invalidateQueries({ queryKey: adminKeys.stats() })
     },
@@ -227,6 +252,7 @@ export function MembersPage() {
       setMembershipAction(null)
       setActionReason('')
       void queryClient.invalidateQueries({ queryKey: adminKeys.members() })
+      void queryClient.invalidateQueries({ queryKey: [...adminKeys.members(), 'counts'] })
       void queryClient.invalidateQueries({ queryKey: adminKeys.stats() })
     },
     onError: (error) => toast.error(toAppError(error).message),
@@ -239,31 +265,16 @@ export function MembersPage() {
     [membersQuery.data],
   )
 
-  const counts = useMemo(
-    () => ({
-      all: members.length,
-      pending: members.filter((member) => member.payment_status === 'Pending').length,
-      paid: members.filter((member) => member.payment_status === 'Paid').length,
-      not_paid: members.filter((member) => member.payment_status === 'Not Paid').length,
-    }),
-    [members],
-  )
+  const totalCount = members[0]?.total_count ?? members.length
 
-  const filtered = useMemo(() => {
-    const needle = search.trim().toLowerCase()
-    return members.filter((member) => {
-      const matchesFilter =
-        filter === 'all' ||
-        (filter === 'pending' && member.payment_status === 'Pending') ||
-        (filter === 'paid' && member.payment_status === 'Paid') ||
-        (filter === 'not_paid' && member.payment_status === 'Not Paid')
-      if (!matchesFilter) return false
-      if (!needle) return true
-      return [member.full_name, member.email, member.phone, member.plan_name, member.pending_reference]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(needle))
-    })
-  }, [members, filter, search])
+  const counts = countsQuery.data ?? {
+    all: totalCount,
+    pending: members.filter((member) => member.payment_status === 'Pending').length,
+    paid: members.filter((member) => member.payment_status === 'Paid').length,
+    not_paid: members.filter((member) => member.payment_status === 'Not Paid').length,
+  }
+
+  const filtered = members
 
   const openDecision = (member: MemberRow, next: Decision) => {
     setSelected(member)
@@ -462,6 +473,32 @@ export function MembersPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            <div className="flex flex-col gap-3 border-t border-line px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-muted">
+                {membersQuery.isLoading
+                  ? 'Loading members…'
+                  : `Showing ${members.length === 0 ? 0 : offset + 1}–${offset + members.length} of ${totalCount}`}
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={offset === 0 || membersQuery.isFetching}
+                  onClick={() => setOffset((value) => Math.max(0, value - PAGE_SIZE))}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={offset + PAGE_SIZE >= totalCount || membersQuery.isFetching}
+                  onClick={() => setOffset((value) => value + PAGE_SIZE)}
+                >
+                  Next
+                </Button>
+              </div>
             </div>
 
             <div className="divide-y divide-line md:hidden">

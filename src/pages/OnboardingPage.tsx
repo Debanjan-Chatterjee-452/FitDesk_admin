@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -37,25 +37,75 @@ export function OnboardingPage() {
     defaultValues: { gymName: '', fullName: '', phone: '' },
   })
 
+  const autoStartedRef = useRef(false)
+  const [autoCompleting, setAutoCompleting] = useState(false)
+
   useEffect(() => {
     let active = true
+    if (!session || session.isAdmin) return
+
     readPendingOwnerDetails()
-      .then((details) => {
-        if (!active) return
-        reset({
-          gymName: details?.gymName ?? '',
-          fullName: details?.fullName ?? session?.profile.full_name ?? '',
-          phone: details?.phone ?? session?.profile.phone ?? '',
-        })
+      .then(async (details) => {
+        if (!active || autoStartedRef.current) return
+
+        if (!details?.gymName) {
+          reset({
+            gymName: '',
+            fullName: session.profile.full_name ?? '',
+            phone: session.profile.phone ?? '',
+          })
+          return
+        }
+
+        autoStartedRef.current = true
+        setAutoCompleting(true)
+        setFormError(null)
+        try {
+          await completeOwnerOnboarding({
+            gymName: details.gymName,
+            fullName: details.fullName || session.profile.full_name || '',
+            phone: details.phone || session.profile.phone || '',
+          })
+          if (!active) return
+          await reload()
+          navigate('/dashboard', { replace: true })
+        } catch (error) {
+          if (!active) return
+          setAutoCompleting(false)
+          setFormError(toAppError(error).message)
+          reset({
+            gymName: details.gymName,
+            fullName: details.fullName || session.profile.full_name || '',
+            phone: details.phone || session.profile.phone || '',
+          })
+        }
       })
       .catch(() => {
         /* prefill is best-effort */
       })
+
     return () => {
       active = false
     }
-  }, [reset, session?.profile.full_name, session?.profile.phone])
+  }, [session, reset, reload, navigate])
 
+  if (autoCompleting) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-bg px-5 py-10">
+        <div className="w-full max-w-[480px] rounded-2xl border border-line bg-surface p-6 text-center shadow-card sm:p-8">
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted">
+            Setting up your gym
+          </p>
+          <h1 className="mt-2 text-[24px] font-semibold tracking-[-0.05em] text-ink">
+            Just a moment…
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-muted">
+            Creating your gym, payment rails and trial subscription.
+          </p>
+        </div>
+      </div>
+    )
+  }
   const onSubmit = async (values: FormValues) => {
     setFormError(null)
     try {

@@ -9,6 +9,26 @@ export function listMembers() {
   })
 }
 
+export function listMembersPage(params: {
+  search?: string | null
+  status?: string | null
+  limit?: number
+  offset?: number
+}) {
+  return callRpc<MemberRow[]>('admin_list_members_page', {
+    p_search: params.search?.trim() || null,
+    p_status: params.status || null,
+    p_limit: params.limit ?? 50,
+    p_offset: params.offset ?? 0,
+  })
+}
+
+export function getMemberStatusCounts() {
+  return callRpc<{ all: number; pending: number; paid: number; not_paid: number }>(
+    'admin_member_status_counts',
+  )
+}
+
 export async function cancelMembership(membershipId: string, reason: string) {
   try {
     return await callRpc<{ membership_id: string; status: string; cancelled_at: string }>(
