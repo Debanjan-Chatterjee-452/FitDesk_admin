@@ -19,7 +19,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { MemberRow, PaymentReviewResult } from '@/types'
-import { cancelMembership, getMemberStatusCounts, listMembersPage, pauseMembership, resumeMembership, reviewPayment, setMemberActive } from '@/lib/api/members'
+import { adjustMembershipDates, cancelMembership, getMemberStatusCounts, listMembersPage, pauseMembership, resumeMembership, reviewPayment, setMemberActive } from '@/lib/api/members'
 import { dedupeByKey } from '@/lib/dedupe'
 import { toAppError } from '@/lib/errors'
 import {
@@ -82,11 +82,13 @@ function MemberActions({
   onDecision,
   onMembershipAction,
   onDeactivate,
+  onAdjustDates,
 }: {
   member: MemberRow
   onDecision: (member: MemberRow, decision: Decision) => void
   onMembershipAction: (member: MemberRow, type: 'cancel' | 'pause' | 'resume') => void
   onDeactivate: (member: MemberRow) => void
+  onAdjustDates: (member: MemberRow) => void
 }) {
   const hasPending = member.payment_status === 'Pending' && !!member.pending_payment_id
   const status = member.membership_status
@@ -153,6 +155,12 @@ function MemberActions({
       ) : null}
 
       {member.membership_id && status !== 'cancelled' ? null : null}
+
+      {member.membership_id ? (
+        <Button size="sm" variant="outline" onClick={() => onAdjustDates(member)}>
+          Set start date
+        </Button>
+      ) : null}
 
       <Button
         size="sm"
@@ -278,6 +286,17 @@ export function MembersPage() {
       toast.success(member.is_deactivated ? 'Member reactivated.' : 'Member deactivated.')
       void queryClient.invalidateQueries({ queryKey: adminKeys.members() })
       void queryClient.invalidateQueries({ queryKey: [...adminKeys.members(), 'counts'] })
+      void queryClient.invalidateQueries({ queryKey: adminKeys.stats() })
+    },
+    onError: (error) => toast.error(toAppError(error).message),
+  })
+
+  const adjustDatesMutation = useMutation({
+    mutationFn: (input: { member: MemberRow; startsOn: string }) =>
+      adjustMembershipDates(input.member.membership_id!, input.startsOn),
+    onSuccess: (result) => {
+      toast.success(`Membership updated: ${result.starts_on} → ${result.ends_on}`)
+      void queryClient.invalidateQueries({ queryKey: adminKeys.members() })
       void queryClient.invalidateQueries({ queryKey: adminKeys.stats() })
     },
     onError: (error) => toast.error(toAppError(error).message),
@@ -493,7 +512,7 @@ export function MembersPage() {
                         <RenewalCell member={member} />
                       </td>
                       <td className="px-5 py-3.5 text-right">
-                        <MemberActions member={member} onDecision={openDecision} onMembershipAction={(m, t) => { setMembershipAction({ member: m, type: t }); setActionReason(t === "cancel" ? "" : "Emergency") }} onDeactivate={(m) => { if (!m.is_deactivated && !window.confirm('Deactivate this member? Historical records will be preserved.')) return; deactivationMutation.mutate(m) }} />
+                        <MemberActions member={member} onDecision={openDecision} onMembershipAction={(m, t) => { setMembershipAction({ member: m, type: t }); setActionReason(t === "cancel" ? "" : "Emergency") }} onDeactivate={(m) => { if (!m.is_deactivated && !window.confirm('Deactivate this member? Historical records will be preserved.')) return; deactivationMutation.mutate(m) }} onAdjustDates={(m) => { const value = window.prompt('Enter membership start date (YYYY-MM-DD):', m.starts_on ?? ''); if (!value) return; adjustDatesMutation.mutate({ member: m, startsOn: value }) }} />
                       </td>
                     </tr>
                   ))}
@@ -576,7 +595,7 @@ export function MembersPage() {
                       <CalendarDays className="h-3 w-3" />
                       Joined {formatDateOnly(member.joined_at)}
                     </span>
-                    <MemberActions member={member} onDecision={openDecision} onMembershipAction={(m, t) => { setMembershipAction({ member: m, type: t }); setActionReason(t === "cancel" ? "" : "Emergency") }} onDeactivate={(m) => { if (!m.is_deactivated && !window.confirm('Deactivate this member? Historical records will be preserved.')) return; deactivationMutation.mutate(m) }} />
+                    <MemberActions member={member} onDecision={openDecision} onMembershipAction={(m, t) => { setMembershipAction({ member: m, type: t }); setActionReason(t === "cancel" ? "" : "Emergency") }} onDeactivate={(m) => { if (!m.is_deactivated && !window.confirm('Deactivate this member? Historical records will be preserved.')) return; deactivationMutation.mutate(m) }} onAdjustDates={(m) => { const value = window.prompt('Enter membership start date (YYYY-MM-DD):', m.starts_on ?? ''); if (!value) return; adjustDatesMutation.mutate({ member: m, startsOn: value }) }} />
                   </div>
                 </div>
               ))}

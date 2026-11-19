@@ -30,6 +30,13 @@ export function setMemberActive(userId: string, active: boolean) {
   })
 }
 
+export function adjustMembershipDates(membershipId: string, startsOn: string) {
+  return callRpc<{ membership_id: string; starts_on: string; ends_on: string; duration_days: number }>(
+    'admin_adjust_membership_dates',
+    { p_membership_id: membershipId, p_starts_on: startsOn },
+  )
+}
+
 export function getMemberStatusCounts() {
   return callRpc<{ all: number; pending: number; paid: number; not_paid: number }>(
     'admin_member_status_counts',
