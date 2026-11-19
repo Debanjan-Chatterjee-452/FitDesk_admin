@@ -108,6 +108,35 @@ export async function saveMyProfile(input: ProfileSaveInput): Promise<AdminProfi
   }
 }
 
+export async function uploadAvatar(userId: string, file: File, currentPath: string | null): Promise<string> {
+  const allowed = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'])
+  if (!allowed.has(file.type)) throw new AppError('INVALID_AVATAR', 'Upload a JPG, PNG, WEBP, or HEIC image.')
+  if (file.size > 5 * 1024 * 1024) throw new AppError('AVATAR_TOO_LARGE', 'The image must be 5 MB or smaller.')
+
+  const ext = extensionFor(file)
+  const path = `${userId}/avatar-${crypto.randomUUID()}.${ext}`
+  const { error } = await getSupabase().storage.from('legal-documents').upload(path, file, {
+    contentType: file.type,
+    cacheControl: '3600',
+    upsert: false,
+  })
+  if (error) throw toAppError(error)
+
+  const { error: updateError } = await getSupabase()
+    .from('profiles')
+    .update({ avatar_path: path, updated_at: new Date().toISOString() })
+    .eq('id', userId)
+  if (updateError) {
+    await getSupabase().storage.from('legal-documents').remove([path])
+    throw toAppError(updateError)
+  }
+
+  if (currentPath && currentPath !== path) {
+    await getSupabase().storage.from('legal-documents').remove([currentPath])
+  }
+  return path
+}
+
 export async function getDocumentSignedUrl(path: string): Promise<string> {
   const { data, error } = await getSupabase()
     .storage.from('legal-documents')
@@ -117,4 +146,15 @@ export async function getDocumentSignedUrl(path: string): Promise<string> {
     throw new AppError('DOCUMENT_UNAVAILABLE', 'The document link could not be created.')
   }
   return data.signedUrl
+}
+
+export async function removeAvatar(userId: string, currentPath: string | null): Promise<void> {
+  if (currentPath) {
+    await getSupabase().storage.from('legal-documents').remove([currentPath])
+  }
+  const { error } = await getSupabase()
+    .from('profiles')
+    .update({ avatar_path: null, updated_at: new Date().toISOString() })
+    .eq('id', userId)
+  if (error) throw toAppError(error)
 }

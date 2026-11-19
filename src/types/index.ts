@@ -7,6 +7,7 @@ export interface AdminProfile {
   id: string
   phone: string
   full_name: string | null
+  avatar_path: string | null
   date_of_birth: string | null
   blood_group: BloodGroup | null
   gender: Gender | null

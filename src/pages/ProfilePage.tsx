@@ -24,7 +24,7 @@ import { toast } from 'sonner'
 import type { AdminProfile } from '@/types'
 import { useAuth } from '@/context/AuthContext'
 import { requestPasswordReset } from '@/lib/api/auth'
-import { getDocumentSignedUrl, getMyProfile, saveMyProfile } from '@/lib/api/profile'
+import { getDocumentSignedUrl, getMyProfile, removeAvatar, saveMyProfile, uploadAvatar } from '@/lib/api/profile'
 import { toAppError } from '@/lib/errors'
 import { todayInputValue } from '@/lib/format'
 import { cn, formatDateOnly } from '@/lib/format'
@@ -225,6 +225,8 @@ export function ProfilePage() {
   const { session, refreshProfile, signOut } = useAuth()
   const queryClient = useQueryClient()
   const [documentFile, setDocumentFile] = useState<File | null>(null)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [avatarBusy, setAvatarBusy] = useState(false)
 
   const profileQuery = useQuery({
     queryKey: adminKeys.profile(),
@@ -233,6 +235,24 @@ export function ProfilePage() {
   })
 
   const profile = profileQuery.data
+
+  useEffect(() => {
+    if (!profile?.avatar_path) {
+      setAvatarUrl(null)
+      return
+    }
+    let active = true
+    getDocumentSignedUrl(profile.avatar_path)
+      .then((url: string) => {
+        if (active) setAvatarUrl(url)
+      })
+      .catch(() => {
+        if (active) setAvatarUrl(null)
+      })
+    return () => {
+      active = false
+    }
+  }, [profile?.avatar_path])
   const {
     register,
     handleSubmit,
@@ -337,6 +357,68 @@ export function ProfilePage() {
                 <option value="other">Other</option>
                 <option value="prefer_not_to_say">Prefer not to say</option>
               </Select>
+            </div>
+
+            <div className="border-t border-line pt-5">
+              <p className="field-label">Profile picture</p>
+              <div className="flex items-center gap-3">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Profile" className="h-16 w-16 rounded-2xl border border-line object-cover" />
+                ) : (
+                  <Avatar name={profile.full_name} size="lg" />
+                )}
+                <div className="flex flex-wrap gap-2">
+                  <label className="cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                      className="hidden"
+                      onChange={async (event) => {
+                        const file = event.target.files?.[0] ?? null
+                        if (!file || !session?.userId) return
+                        setAvatarBusy(true)
+                        try {
+                          await uploadAvatar(session.userId, file, profile?.avatar_path ?? null)
+                          await queryClient.invalidateQueries({ queryKey: adminKeys.profile() })
+                          await refreshProfile()
+                          toast.success('Profile picture updated.')
+                        } catch (error) {
+                          toast.error(toAppError(error).message)
+                        } finally {
+                          setAvatarBusy(false)
+                          event.target.value = ''
+                        }
+                      }}
+                    />
+                    <span className="inline-flex h-9 items-center rounded-xl border border-line bg-surface px-3 text-xs font-semibold text-ink">
+                      {avatarBusy ? 'Uploading…' : 'Upload'}
+                    </span>
+                  </label>
+                  {profile?.avatar_path ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={avatarBusy}
+                      onClick={async () => {
+                        if (!session?.userId) return
+                        setAvatarBusy(true)
+                        try {
+                          await removeAvatar(session.userId, profile.avatar_path ?? null)
+                          await queryClient.invalidateQueries({ queryKey: adminKeys.profile() })
+                          await refreshProfile()
+                          toast.success('Profile picture removed.')
+                        } catch (error) {
+                          toast.error(toAppError(error).message)
+                        } finally {
+                          setAvatarBusy(false)
+                        }
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
             </div>
 
             <div className="border-t border-line pt-5">
