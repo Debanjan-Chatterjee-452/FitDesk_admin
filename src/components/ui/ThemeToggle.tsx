@@ -1,13 +1,12 @@
-import { Moon, Sun, Monitor } from 'lucide-react'
+import { Moon, Sun } from 'lucide-react'
 import { useTheme } from '@/context/ThemeProvider'
 import { cn } from '@/lib/format'
 
 export function ThemeToggle({ className, onDark = false }: { className?: string; onDark?: boolean }) {
   const { mode, setMode } = useTheme()
-  const options: { value: 'light' | 'dark' | 'system'; icon: typeof Sun; label: string }[] = [
+  const options: { value: 'light' | 'dark'; icon: typeof Sun; label: string }[] = [
     { value: 'light', icon: Sun, label: 'Light' },
     { value: 'dark', icon: Moon, label: 'Dark' },
-    { value: 'system', icon: Monitor, label: 'System' },
   ]
   return (
     <div

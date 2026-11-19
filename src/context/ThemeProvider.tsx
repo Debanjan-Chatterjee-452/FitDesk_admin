@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 
-export type ThemeMode = 'light' | 'dark' | 'system'
+export type ThemeMode = 'light' | 'dark'
 
 interface ThemeContextValue {
   mode: ThemeMode
@@ -20,23 +20,18 @@ interface ThemeContextValue {
 const STORAGE_KEY = 'fitdesk.theme'
 const ThemeContext = createContext<ThemeContextValue | null>(null)
 
-function systemTheme(): 'light' | 'dark' {
-  if (typeof window === 'undefined') return 'light'
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-}
-
 function readStoredMode(): ThemeMode {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw === 'light' || raw === 'dark' || raw === 'system') return raw
+    if (raw === 'light' || raw === 'dark') return raw
   } catch {
     // no-op
   }
-  return 'system'
+  return 'light'
 }
 
 function applyTheme(mode: ThemeMode): 'light' | 'dark' {
-  const resolved = mode === 'system' ? systemTheme() : mode
+  const resolved = mode
   const root = document.documentElement
   root.setAttribute('data-theme', resolved)
   root.classList.toggle('dark', resolved === 'dark')
@@ -58,14 +53,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setResolved(applyTheme(mode))
-  }, [mode])
-
-  useEffect(() => {
-    if (mode !== 'system') return
-    const query = window.matchMedia('(prefers-color-scheme: dark)')
-    const handle = () => setResolved(applyTheme('system'))
-    query.addEventListener('change', handle)
-    return () => query.removeEventListener('change', handle)
   }, [mode])
 
   const setMode = useCallback((next: ThemeMode) => {
