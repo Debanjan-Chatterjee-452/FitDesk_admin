@@ -125,6 +125,7 @@ export interface MemberRow {
   pending_plan_name: string | null
   activity_at: string
   total_count?: number
+  is_deactivated?: boolean
 }
 
 export interface RenewalQuote {

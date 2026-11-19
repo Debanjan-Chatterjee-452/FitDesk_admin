@@ -19,7 +19,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { MemberRow, PaymentReviewResult } from '@/types'
-import { cancelMembership, getMemberStatusCounts, listMembersPage, pauseMembership, resumeMembership, reviewPayment } from '@/lib/api/members'
+import { cancelMembership, getMemberStatusCounts, listMembersPage, pauseMembership, resumeMembership, reviewPayment, setMemberActive } from '@/lib/api/members'
 import { dedupeByKey } from '@/lib/dedupe'
 import { toAppError } from '@/lib/errors'
 import {
@@ -81,10 +81,12 @@ function MemberActions({
   member,
   onDecision,
   onMembershipAction,
+  onDeactivate,
 }: {
   member: MemberRow
   onDecision: (member: MemberRow, decision: Decision) => void
   onMembershipAction: (member: MemberRow, type: 'cancel' | 'pause' | 'resume') => void
+  onDeactivate: (member: MemberRow) => void
 }) {
   const hasPending = member.payment_status === 'Pending' && !!member.pending_payment_id
   const status = member.membership_status
@@ -149,6 +151,17 @@ function MemberActions({
           </Button>
         </>
       ) : null}
+
+      {member.membership_id && status !== 'cancelled' ? null : null}
+
+      <Button
+        size="sm"
+        variant="outline"
+        className="border-danger/20 text-danger hover:border-danger/30 hover:bg-danger-soft"
+        onClick={() => onDeactivate(member)}
+      >
+        {member.is_deactivated ? 'Reactivate' : 'Deactivate'}
+      </Button>
 
       {status === 'cancelled' ? (
         <span className="text-[10px] font-semibold text-danger">Cancelled</span>
@@ -258,6 +271,18 @@ export function MembersPage() {
     onError: (error) => toast.error(toAppError(error).message),
   })
 
+  const deactivationMutation = useMutation({
+    mutationFn: (member: MemberRow) =>
+      setMemberActive(member.user_id, Boolean(member.is_deactivated)),
+    onSuccess: (_data, member) => {
+      toast.success(member.is_deactivated ? 'Member reactivated.' : 'Member deactivated.')
+      void queryClient.invalidateQueries({ queryKey: adminKeys.members() })
+      void queryClient.invalidateQueries({ queryKey: [...adminKeys.members(), 'counts'] })
+      void queryClient.invalidateQueries({ queryKey: adminKeys.stats() })
+    },
+    onError: (error) => toast.error(toAppError(error).message),
+  })
+
   // Backend SQL is one-row-per-user; keep a second guard at the render boundary
   // so a stale retry or a future realtime patch cannot create duplicate rows.
   const members = useMemo(
@@ -267,12 +292,12 @@ export function MembersPage() {
 
   const totalCount = members[0]?.total_count ?? members.length
 
-  const counts = countsQuery.data ?? {
+  const counts = (countsQuery.data ?? {
     all: totalCount,
     pending: members.filter((member) => member.payment_status === 'Pending').length,
     paid: members.filter((member) => member.payment_status === 'Paid').length,
     not_paid: members.filter((member) => member.payment_status === 'Not Paid').length,
-  }
+  }) as { all: number; pending: number; paid: number; not_paid: number }
 
   const filtered = members
 
@@ -457,6 +482,7 @@ export function MembersPage() {
                       </td>
                       <td className="px-5 py-3.5">
                         <PaymentBadge status={member.payment_status} />
+                        {member.is_deactivated ? <Badge tone="danger">Deactivated</Badge> : null}
                         {member.payment_status === 'Pending' ? (
                           <p className="mt-1 max-w-[150px] truncate text-[9px] font-medium text-warn">
                             {member.pending_reference ?? 'No UTR'} · {formatInr(member.pending_amount_inr)}
@@ -467,7 +493,7 @@ export function MembersPage() {
                         <RenewalCell member={member} />
                       </td>
                       <td className="px-5 py-3.5 text-right">
-                        <MemberActions member={member} onDecision={openDecision} onMembershipAction={(m, t) => { setMembershipAction({ member: m, type: t }); setActionReason(t === "cancel" ? "" : "Emergency") }} />
+                        <MemberActions member={member} onDecision={openDecision} onMembershipAction={(m, t) => { setMembershipAction({ member: m, type: t }); setActionReason(t === "cancel" ? "" : "Emergency") }} onDeactivate={(m) => { if (!m.is_deactivated && !window.confirm('Deactivate this member? Historical records will be preserved.')) return; deactivationMutation.mutate(m) }} />
                       </td>
                     </tr>
                   ))}
@@ -550,7 +576,7 @@ export function MembersPage() {
                       <CalendarDays className="h-3 w-3" />
                       Joined {formatDateOnly(member.joined_at)}
                     </span>
-                    <MemberActions member={member} onDecision={openDecision} onMembershipAction={(m, t) => { setMembershipAction({ member: m, type: t }); setActionReason(t === "cancel" ? "" : "Emergency") }} />
+                    <MemberActions member={member} onDecision={openDecision} onMembershipAction={(m, t) => { setMembershipAction({ member: m, type: t }); setActionReason(t === "cancel" ? "" : "Emergency") }} onDeactivate={(m) => { if (!m.is_deactivated && !window.confirm('Deactivate this member? Historical records will be preserved.')) return; deactivationMutation.mutate(m) }} />
                   </div>
                 </div>
               ))}

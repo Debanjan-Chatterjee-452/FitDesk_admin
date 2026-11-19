@@ -23,6 +23,13 @@ export function listMembersPage(params: {
   })
 }
 
+export function setMemberActive(userId: string, active: boolean) {
+  return callRpc<{ user_id: string; active: boolean }>('admin_set_member_active', {
+    p_user_id: userId,
+    p_active: active,
+  })
+}
+
 export function getMemberStatusCounts() {
   return callRpc<{ all: number; pending: number; paid: number; not_paid: number }>(
     'admin_member_status_counts',
