@@ -32,7 +32,7 @@ import { Select } from '@/components/ui/Select'
 import { SectionLoader } from '@/components/ui/Spinner'
 import { Textarea } from '@/components/ui/Textarea'
 
-const MONTH_OPTIONS = [1, 2, 3, 4, 6, 12, 18, 24]
+const MONTH_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 
 const schema = z.object({
   months: z.string().min(1, 'Choose a duration.'),
@@ -141,12 +141,13 @@ function PackageFormDialog({
         noValidate
       >
         <div className="grid gap-4 sm:grid-cols-2">
-          <Select label="Month duration" error={errors.months?.message} {...register('months')}>
+          <Select label="Duration" error={errors.months?.message} {...register('months')}>
             {MONTH_OPTIONS.map((months) => (
               <option key={months} value={months}>
                 {months} {months === 1 ? 'month' : 'months'}
               </option>
             ))}
+            <option value={0}>1 Day (24 Hours)</option>
           </Select>
           <Input
             label="Price (INR)"
@@ -235,7 +236,7 @@ function PackageCard({
         </span>
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
-            {pkg.duration_months} {pkg.duration_months === 1 ? 'month' : 'months'}
+            {pkg.duration_months === 0 ? '1 day' : `${pkg.duration_months} ${pkg.duration_months === 1 ? 'month' : 'months'}`}
           </p>
           <p className="text-[10px] text-faint">{pkg.duration_days} days access</p>
         </div>
@@ -252,7 +253,7 @@ function PackageCard({
             {formatInr(pkg.price_inr)}
           </p>
           <p className="mt-1 text-[10px] text-muted">
-            about {formatInr(Math.round(pkg.price_inr / pkg.duration_months))} / month
+            about {pkg.duration_months > 0 ? `${formatInr(Math.round(pkg.price_inr / pkg.duration_months))} / month` : `${formatInr(pkg.price_inr)} for 1 day`}
           </p>
         </div>
         <Badge tone={pkg.is_active ? 'paid' : 'neutral'} dot>
