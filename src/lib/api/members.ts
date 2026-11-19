@@ -37,6 +37,10 @@ export function adjustMembershipDates(membershipId: string, startsOn: string) {
   )
 }
 
+export function generateExpiryNotifications() {
+  return callRpc<number>('admin_generate_expiry_notifications')
+}
+
 export function getMemberStatusCounts() {
   return callRpc<{ all: number; pending: number; paid: number; not_paid: number }>(
     'admin_member_status_counts',

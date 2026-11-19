@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowUpRight,
   CalendarClock,
@@ -18,6 +18,7 @@ import { useAuth } from '@/context/AuthContext'
 import { getDashboardStats, getGymSettings } from '@/lib/api/dashboard'
 import { listPendingPayments } from '@/lib/api/members'
 import { toast } from 'sonner'
+import { toAppError } from '@/lib/errors'
 import { cn, formatDateOnly, formatInr, formatNumber, greeting } from '@/lib/format'
 import { adminKeys } from '@/lib/queryKeys'
 import { Badge } from '@/components/ui/Badge'
@@ -43,6 +44,7 @@ function DashboardError({ onRetry }: { onRetry: () => void }) {
 
 export function DashboardPage() {
   const { session } = useAuth()
+  const queryClient = useQueryClient()
   const statsQuery = useQuery({ queryKey: adminKeys.stats(), queryFn: getDashboardStats })
   const gymQuery = useQuery({ queryKey: adminKeys.gym(), queryFn: getGymSettings })
   const pendingQuery = useQuery({
@@ -75,6 +77,21 @@ export function DashboardPage() {
         description="A clear view of the club: approvals, members, and the days ahead."
         action={
           <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                try {
+                  const n = await (await import('@/lib/api/members')).generateExpiryNotifications?.()
+                  toast.success(`Generated ${n ?? 0} expiry notifications.`)
+                  void queryClient.invalidateQueries({ queryKey: adminKeys.notifications() })
+                } catch (e) {
+                  toast.error(toAppError(e).message)
+                }
+              }}
+            >
+              Generate expiry alerts
+            </Button>
             <Link
               to="/members"
               className="focus-ring inline-flex h-11 items-center gap-2 rounded-xl border border-line bg-surface px-4 text-sm font-semibold text-ink shadow-sm transition hover:border-line hover:bg-elevated"
@@ -162,6 +179,16 @@ export function DashboardPage() {
           tone="dark"
         />
       </div>
+
+      {stats ? (
+        <div className="flex flex-wrap gap-2 text-[11px] text-muted">
+          <span className="rounded-full bg-elevated px-3 py-1">Expiring in 1 day: <strong className="text-ink">{stats.expiring_1d ?? 0}</strong></span>
+          <span className="rounded-full bg-elevated px-3 py-1">Expiring in 3 days: <strong className="text-ink">{stats.expiring_3d ?? 0}</strong></span>
+          <span className="rounded-full bg-elevated px-3 py-1">Expiring in 7 days: <strong className="text-ink">{stats.expiring_7d ?? 0}</strong></span>
+          <span className="rounded-full bg-elevated px-3 py-1">Expired: <strong className="text-ink">{stats.expired ?? 0}</strong></span>
+          <span className="rounded-full bg-elevated px-3 py-1">Deactivated: <strong className="text-ink">{stats.deactivated_members ?? 0}</strong></span>
+        </div>
+      ) : null}
 
       <div className="grid gap-4 xl:grid-cols-3">
         {gym ? (

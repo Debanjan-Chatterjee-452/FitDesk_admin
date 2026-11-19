@@ -71,6 +71,11 @@ export interface DashboardStats {
   active_members: number
   pending_approvals: number
   expiring_soon: number
+  expiring_1d: number
+  expiring_3d: number
+  expiring_7d: number
+  expired: number
+  deactivated_members: number
   today_checkins: number
   revenue_month_inr: number
   active_packages: number
