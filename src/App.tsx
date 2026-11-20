@@ -5,6 +5,7 @@ import { Toaster } from 'sonner'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { installAdminSyncBridge } from '@/lib/sync'
+import { useAdminRealtime } from '@/lib/realtime'
 import { AppShell } from '@/components/layout/AppShell'
 import { FullPageLoader } from '@/components/ui/Spinner'
 import { Button } from '@/components/ui/Button'
@@ -90,6 +91,7 @@ function LoginRedirect() {
 export default function App() {
   const { bootError } = useAuth()
   const queryClient = useQueryClient()
+  useAdminRealtime()
   const navigate = useNavigate()
 
   useEffect(() => installAdminSyncBridge(queryClient), [queryClient])
