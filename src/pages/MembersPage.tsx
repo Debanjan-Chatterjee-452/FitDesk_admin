@@ -22,7 +22,7 @@ import { toast } from 'sonner'
 import type { MemberRow, PaymentReviewResult } from '@/types'
 import { adjustMembershipDates, cancelMembership, generateCashOtp, getMemberStatusCounts, listMembersPage, pauseMembership, resumeMembership, reviewPayment, setMemberActive } from '@/lib/api/members'
 import { dedupeByKey } from '@/lib/dedupe'
-import { getDocumentSignedUrl } from '@/lib/api/profile'
+import { getAvatarSignedUrl } from '@/lib/api/profile'
 import { toAppError } from '@/lib/errors'
 import {
   cn,
@@ -243,7 +243,7 @@ export function MembersPage() {
       members
         .filter((m) => m.avatar_path)
         .map(async (m) => {
-          const url = await getDocumentSignedUrl(m.avatar_path as string)
+          const url = await getAvatarSignedUrl(m.avatar_path as string)
           return [m.user_id, url] as const
         }),
     ).then((entries) => {

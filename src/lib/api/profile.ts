@@ -115,7 +115,7 @@ export async function uploadAvatar(userId: string, file: File, currentPath: stri
 
   const ext = extensionFor(file)
   const path = `${userId}/avatar-${crypto.randomUUID()}.${ext}`
-  const { error } = await getSupabase().storage.from('legal-documents').upload(path, file, {
+  const { error } = await getSupabase().storage.from('profile-avatars').upload(path, file, {
     contentType: file.type,
     cacheControl: '3600',
     upsert: false,
@@ -127,12 +127,12 @@ export async function uploadAvatar(userId: string, file: File, currentPath: stri
     .update({ avatar_path: path, updated_at: new Date().toISOString() })
     .eq('id', userId)
   if (updateError) {
-    await getSupabase().storage.from('legal-documents').remove([path])
+    await getSupabase().storage.from('profile-avatars').remove([path])
     throw toAppError(updateError)
   }
 
   if (currentPath && currentPath !== path) {
-    await getSupabase().storage.from('legal-documents').remove([currentPath])
+    await getSupabase().storage.from('profile-avatars').remove([currentPath])
   }
   return path
 }
@@ -148,9 +148,21 @@ export async function getDocumentSignedUrl(path: string): Promise<string> {
   return data.signedUrl
 }
 
+export async function getAvatarSignedUrl(path: string): Promise<string | null> {
+  try {
+    const { data, error } = await getSupabase()
+      .storage.from('profile-avatars')
+      .createSignedUrl(path, 3600)
+    if (error) return null
+    return data?.signedUrl ?? null
+  } catch {
+    return null
+  }
+}
+
 export async function removeAvatar(userId: string, currentPath: string | null): Promise<void> {
   if (currentPath) {
-    await getSupabase().storage.from('legal-documents').remove([currentPath])
+    await getSupabase().storage.from('profile-avatars').remove([currentPath])
   }
   const { error } = await getSupabase()
     .from('profiles')
