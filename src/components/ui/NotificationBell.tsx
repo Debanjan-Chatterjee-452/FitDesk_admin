@@ -69,7 +69,7 @@ export function NotificationBell() {
             aria-label="Close notifications"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute right-0 top-12 z-50 w-[360px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-line bg-surface shadow-lift">
+          <div className="fixed right-2 top-14 z-50 w-[min(360px,calc(100vw-1rem))] overflow-hidden rounded-2xl border border-line bg-surface shadow-lift sm:absolute sm:right-0 sm:top-12">
             <div className="flex items-center justify-between border-b border-line px-4 py-3">
               <p className="text-sm font-semibold text-ink">Notifications</p>
               {count > 0 ? (
@@ -83,7 +83,7 @@ export function NotificationBell() {
                 </button>
               ) : null}
             </div>
-            <div className="max-h-[420px] overflow-y-auto">
+            <div className="max-h-[60vh] overflow-y-auto">
               {listQuery.isLoading ? (
                 <p className="px-4 py-6 text-center text-xs text-muted">Loading…</p>
               ) : (listQuery.data ?? []).length === 0 ? (

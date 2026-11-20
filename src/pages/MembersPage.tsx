@@ -22,6 +22,7 @@ import { toast } from 'sonner'
 import type { MemberRow, PaymentReviewResult } from '@/types'
 import { adjustMembershipDates, cancelMembership, generateCashOtp, getMemberStatusCounts, listMembersPage, pauseMembership, resumeMembership, reviewPayment, setMemberActive } from '@/lib/api/members'
 import { dedupeByKey } from '@/lib/dedupe'
+import { getDocumentSignedUrl } from '@/lib/api/profile'
 import { toAppError } from '@/lib/errors'
 import {
   cn,
@@ -229,6 +230,34 @@ export function MembersPage() {
         offset,
       }),
   })
+
+  const [avatarUrls, setAvatarUrls] = useState<Record<string, string>>({})
+  useEffect(() => {
+    const members = membersQuery.data ?? []
+    if (members.filter((m) => m.avatar_path).length === 0) {
+      setAvatarUrls({})
+      return
+    }
+    let active = true
+    void Promise.all(
+      members
+        .filter((m) => m.avatar_path)
+        .map(async (m) => {
+          const url = await getDocumentSignedUrl(m.avatar_path as string)
+          return [m.user_id, url] as const
+        }),
+    ).then((entries) => {
+      if (!active) return
+      const map: Record<string, string> = {}
+      for (const [id, url] of entries) {
+        if (url) map[id] = url
+      }
+      setAvatarUrls(map)
+    })
+    return () => {
+      active = false
+    }
+  }, [membersQuery.data])
 
   const countsQuery = useQuery({
     queryKey: [...adminKeys.members(), 'counts'],
@@ -498,7 +527,7 @@ export function MembersPage() {
                     >
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-3">
-                          <Avatar name={member.full_name} size="sm" />
+                          <Avatar name={member.full_name} src={avatarUrls[member.user_id]} size="sm" />
                           <div className="min-w-0">
                             <p className="truncate text-[13px] font-semibold text-ink">
                               {member.full_name}
@@ -583,7 +612,7 @@ export function MembersPage() {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-3">
-                      <Avatar name={member.full_name} />
+                      <Avatar name={member.full_name} src={avatarUrls[member.user_id]} />
                       <div className="min-w-0">
                         <p className="truncate text-[13px] font-semibold text-ink">{member.full_name}</p>
                         <p className="truncate text-[10px] text-muted">{member.email ?? member.phone}</p>

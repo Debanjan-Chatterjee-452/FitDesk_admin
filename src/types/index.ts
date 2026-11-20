@@ -117,6 +117,7 @@ export interface MemberRow {
   full_name: string
   email: string | null
   phone: string | null
+  avatar_path: string | null
   joined_at: string
   plan_name: string | null
   membership_status: MembershipState | null
