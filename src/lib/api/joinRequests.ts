@@ -7,6 +7,8 @@ export interface JoinRequestRow {
   user_email: string
   member_name: string | null
   member_phone: string | null
+  member_document_path: string | null
+  member_document_name: string | null
 }
 
 export function listJoinRequests() {

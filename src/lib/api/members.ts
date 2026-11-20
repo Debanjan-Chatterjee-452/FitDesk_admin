@@ -84,6 +84,17 @@ export function listPendingPayments() {
   return callRpc<PendingPayment[]>('admin_list_pending_payments')
 }
 
+export async function generateCashOtp(paymentId: string) {
+  try {
+    return await callRpc<{ otp: string; expires_at: string; payment_id: string }>(
+      'admin_generate_cash_otp',
+      { p_payment_id: paymentId },
+    )
+  } catch (error) {
+    throw toAppError(error)
+  }
+}
+
 export async function reviewPayment(
   paymentId: string,
   decision: 'approved' | 'declined',

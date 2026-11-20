@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, CheckCircle2, Clock3, RefreshCw, UserRound, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
+import { getDocumentSignedUrl } from '@/lib/api/profile'
 import { listJoinRequests, pendingJoinRequestCount, reviewJoinRequest } from '@/lib/api/joinRequests'
 import { toAppError } from '@/lib/errors'
 import { adminKeys } from '@/lib/queryKeys'
@@ -111,6 +112,22 @@ export function JoinRequestsPage() {
                     <p className="truncate text-xs text-muted">{request.user_email}</p>
                     {request.member_phone ? (
                       <p className="truncate text-xs text-muted">{request.member_phone}</p>
+                    ) : null}
+                    {request.member_document_path ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            const url = await getDocumentSignedUrl(request.member_document_path!)
+                            window.open(url, '_blank', 'noopener,noreferrer')
+                          } catch (error) {
+                            toast.error(toAppError(error).message)
+                          }
+                        }}
+                      >
+                        View document
+                      </Button>
                     ) : null}
                     <p className="text-xs text-muted">
                       Requested {request.requested_at ? formatDateTime(request.requested_at) : '—'}
