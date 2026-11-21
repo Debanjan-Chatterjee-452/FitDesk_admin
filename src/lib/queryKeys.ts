@@ -9,6 +9,7 @@ export const adminKeys = {
   closures: (from: string, to: string) => [...adminKeys.all, 'closures', from, to] as const,
   attendance: () => [...adminKeys.all, 'attendance'] as const,
   profile: () => [...adminKeys.all, 'profile'] as const,
+  admins: () => [...adminKeys.all, 'admins'] as const,
   notifications: () => [...adminKeys.all, 'notifications'] as const,
   notificationsCount: () => [...adminKeys.all, 'notifications-count'] as const,
 }
