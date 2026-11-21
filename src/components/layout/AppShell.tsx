@@ -12,11 +12,18 @@ export function AppShell() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [signOutOpen, setSignOutOpen] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
+  const [notificationOpen, setNotificationOpen] = useState(false)
   const location = useLocation()
 
   useEffect(() => {
     setDrawerOpen(false)
+    setNotificationOpen(false)
   }, [location.pathname])
+
+  const openDrawer = () => {
+    setNotificationOpen(false)
+    setDrawerOpen(true)
+  }
 
   if (!session) return null
 
@@ -41,7 +48,7 @@ export function AppShell() {
         />
       </aside>
 
-      <MobileTopbar onMenu={() => setDrawerOpen(true)} />
+      <MobileTopbar onMenu={openDrawer} />
 
       {drawerOpen ? (
         <div className="fixed inset-0 z-50 lg:hidden">
@@ -77,7 +84,7 @@ export function AppShell() {
       <main className="min-h-screen lg:pl-[272px]">
         <div className="mx-auto w-full max-w-[1440px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 xl:px-10">
           <div className="mb-4 flex justify-end lg:mb-6">
-            <NotificationBell />
+            <NotificationBell open={notificationOpen} onOpenChange={setNotificationOpen} />
           </div>
           <Outlet />
         </div>

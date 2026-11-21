@@ -11,9 +11,20 @@ import {
 import { cn } from '@/lib/format'
 import { formatDateTime } from '@/lib/format'
 
-export function NotificationBell() {
+export function NotificationBell({
+  open: controlledOpen,
+  onOpenChange,
+}: {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+} = {}) {
   const queryClient = useQueryClient()
-  const [open, setOpen] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
+  const open = controlledOpen ?? internalOpen
+  const setOpen = (value: boolean) => {
+    if (onOpenChange) onOpenChange(value)
+    else setInternalOpen(value)
+  }
 
   const countQuery = useQuery({
     queryKey: adminKeys.notificationsCount(),
@@ -49,7 +60,7 @@ export function NotificationBell() {
     <div className="relative">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen(!open)}
         className="focus-ring relative grid h-10 w-10 place-items-center rounded-xl border border-line bg-surface text-ink shadow-sm"
         aria-label="Notifications"
       >
