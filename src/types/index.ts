@@ -28,6 +28,7 @@ export interface GymSettings {
   owner_id: string | null
   slug: string
   name: string
+  admission_fee_inr: number | null
   upi_id: string | null
   upi_payee_name: string | null
   payment_qr_path: string | null
@@ -38,7 +39,6 @@ export interface GymSettings {
   shutter_changed_at: string | null
   attendance_qr_months: number
   attendance_qr_rotated_at: string | null
-  admission_fee_inr: number
   created_at: string
   updated_at: string
 }

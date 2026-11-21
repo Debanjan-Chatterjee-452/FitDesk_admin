@@ -17,6 +17,8 @@ import {
 import { toast } from 'sonner'
 import type { PackageRow } from '@/types'
 import { listAdminPackages, savePackage, setPackageActive } from '@/lib/api/packages'
+import { getGymSettings } from '@/lib/api/dashboard'
+import { setAdmissionFee } from '@/lib/api/settings'
 import { toAppError } from '@/lib/errors'
 import { cn, formatInr } from '@/lib/format'
 import { adminKeys } from '@/lib/queryKeys'
@@ -292,6 +294,70 @@ function PackageCard({
   )
 }
 
+function AdmissionFeeCard() {
+  const queryClient = useQueryClient()
+  const gymQuery = useQuery({ queryKey: adminKeys.gym(), queryFn: getGymSettings })
+  const [amount, setAmount] = useState(String(gymQuery.data?.admission_fee_inr ?? 0))
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    setAmount(String(gymQuery.data?.admission_fee_inr ?? 0))
+  }, [gymQuery.data?.admission_fee_inr])
+
+  const save = async (value: number) => {
+    setBusy(true)
+    try {
+      await setAdmissionFee(value)
+      toast.success(value === 0 ? 'Admission fee removed.' : `Admission fee set to ₹${value}.`)
+      await queryClient.invalidateQueries({ queryKey: adminKeys.gym() })
+    } catch (error) {
+      toast.error(toAppError(error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Card className="p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-[12px] font-semibold text-ink">Admission fee</p>
+          <p className="mt-1 text-[10px] leading-5 text-muted">
+            Charged to new admissions. Set to 0 to disable.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-end gap-2">
+          <Input
+            label="Amount (INR)"
+            type="number"
+            min={0}
+            step={1}
+            inputMode="numeric"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className="w-32"
+          />
+          <Button
+            size="sm"
+            disabled={busy}
+            onClick={() => void save(Number(amount) || 0)}
+          >
+            {busy ? 'Saving…' : 'Save'}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={busy || (gymQuery.data?.admission_fee_inr ?? 0) === 0}
+            onClick={() => void save(0)}
+          >
+            Remove
+          </Button>
+        </div>
+      </div>
+    </Card>
+  )
+}
+
 export function PackagesPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<PackageRow | null>(null)
@@ -329,6 +395,8 @@ export function PackagesPage() {
           </Button>
         }
       />
+
+      <AdmissionFeeCard />
 
       <div className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4 shadow-card sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <div className="flex items-start gap-3">
