@@ -23,6 +23,7 @@ import {
 import { toast } from 'sonner'
 import type { AdminProfile } from '@/types'
 import { useAuth } from '@/context/AuthContext'
+import { addGymAdmin } from '@/lib/api/admins'
 import { requestPasswordReset } from '@/lib/api/auth'
 import { getDocumentSignedUrl, getMyProfile, removeAvatar, saveMyProfile, uploadAvatar } from '@/lib/api/profile'
 import { toAppError } from '@/lib/errors'
@@ -225,6 +226,8 @@ export function ProfilePage() {
   const { session, refreshProfile, signOut } = useAuth()
   const queryClient = useQueryClient()
   const [documentFile, setDocumentFile] = useState<File | null>(null)
+  const [adminEmail, setAdminEmail] = useState('')
+  const [adminBusy, setAdminBusy] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [avatarBusy, setAvatarBusy] = useState(false)
 
@@ -503,6 +506,48 @@ export function ProfilePage() {
                 <BadgeCheck className="h-3.5 w-3.5 text-primary" />
                 Admin access verified by Supabase
               </p>
+            </div>
+          </Card>
+
+          <Card className="p-5">
+            <div className="flex items-start gap-3">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
+                <ShieldCheck className="h-4 w-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[12px] font-semibold text-ink">Secondary administrators</p>
+                <p className="mt-1 text-[10px] leading-5 text-muted">
+                  Add up to one backup administrator by email. Both admins share this gym and have the same permissions.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Input
+                    type="email"
+                    placeholder="backup.admin@example.com"
+                    value={adminEmail}
+                    onChange={(e) => setAdminEmail(e.target.value)}
+                    className="min-w-[220px] flex-1"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={adminBusy || !adminEmail.trim()}
+                    onClick={async () => {
+                      setAdminBusy(true)
+                      try {
+                        const result = await addGymAdmin(adminEmail)
+                        toast.success(result.status === 'already_admin' ? 'Already an admin of this gym.' : 'Administrator added.')
+                        setAdminEmail('')
+                      } catch (error) {
+                        toast.error(toAppError(error).message)
+                      } finally {
+                        setAdminBusy(false)
+                      }
+                    }}
+                  >
+                    {adminBusy ? 'Adding…' : 'Add admin'}
+                  </Button>
+                </div>
+              </div>
             </div>
           </Card>
 

@@ -38,6 +38,7 @@ export interface GymSettings {
   shutter_changed_at: string | null
   attendance_qr_months: number
   attendance_qr_rotated_at: string | null
+  admission_fee_inr: number
   created_at: string
   updated_at: string
 }

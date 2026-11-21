@@ -150,3 +150,9 @@ export async function savePaymentSettings(input: PaymentSettingsInput): Promise<
 export function updateGymName(name: string) {
   return callRpc<GymSettings>('admin_update_gym_name', { p_name: name })
 }
+
+export function setAdmissionFee(amount: number) {
+  return callRpc<{ gym_id: string; admission_fee_inr: number }>('admin_set_admission_fee', {
+    p_amount: amount,
+  })
+}
