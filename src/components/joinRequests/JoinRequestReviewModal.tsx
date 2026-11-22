@@ -121,9 +121,15 @@ export function JoinRequestReviewModal({
 
   if (!request) return null
 
+  const documentName = request.member_document_name ?? ''
+  const isPdf =
+    request.member_document_mime_type === 'application/pdf' || /\.pdf$/i.test(documentName)
+  // HEIC/HEIF cannot be rendered by desktop browsers; those fall back to the
+  // "Open document" button like any other unsupported format.
   const isImage =
-    request.member_document_mime_type?.startsWith('image/') ||
-    /\.(jpe?g|png|webp|heic|heif)$/i.test(request.member_document_name ?? '')
+    !isPdf &&
+    (request.member_document_mime_type?.startsWith('image/') ||
+      /\.(jpe?g|png|webp)$/i.test(documentName))
 
   return (
     <Modal
@@ -253,12 +259,38 @@ export function JoinRequestReviewModal({
                   <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                   {fileError}
                 </div>
+              ) : documentUrl && isPdf ? (
+                <div className="space-y-2">
+                  <iframe
+                    src={documentUrl}
+                    title="Member identity document"
+                    className="h-[420px] w-full rounded-xl border border-line bg-elevated"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={<ExternalLink className="h-4 w-4" />}
+                    onClick={() => window.open(documentUrl, '_blank', 'noopener,noreferrer')}
+                  >
+                    Open PDF in new tab
+                  </Button>
+                </div>
               ) : documentUrl && isImage ? (
-                <img
-                  src={documentUrl}
-                  alt="Member identity document"
-                  className="max-h-[420px] w-full rounded-xl border border-line bg-elevated object-contain"
-                />
+                <div className="space-y-2">
+                  <img
+                    src={documentUrl}
+                    alt="Member identity document"
+                    className="max-h-[420px] w-full rounded-xl border border-line bg-elevated object-contain"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={<ExternalLink className="h-4 w-4" />}
+                    onClick={() => window.open(documentUrl, '_blank', 'noopener,noreferrer')}
+                  >
+                    Open image in new tab
+                  </Button>
+                </div>
               ) : documentUrl ? (
                 <Button
                   variant="outline"
