@@ -5,10 +5,17 @@ export interface JoinRequestRow {
   status: string
   requested_at: string
   user_email: string
+  member_user_id: string | null
   member_name: string | null
   member_phone: string | null
+  member_date_of_birth: string | null
+  member_gender: string | null
+  member_blood_group: string | null
+  member_avatar_path: string | null
+  member_profile_completed: boolean
   member_document_path: string | null
   member_document_name: string | null
+  member_document_mime_type: string | null
   member_document_type: string | null
   member_document_number: string | null
 }

@@ -5,7 +5,9 @@ import {
   CalendarClock,
   CheckCircle2,
   Clock3,
+  Copy,
   CreditCard,
+  KeyRound,
   Layers3,
   Plus,
   QrCode,
@@ -113,40 +115,53 @@ export function DashboardPage() {
       {statsQuery.isError || gymQuery.isError ? <DashboardError onRetry={retryAll} /> : null}
 
       {gym ? (
-        <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted">Gym identity</p>
-            <p className="mt-1 truncate text-sm font-semibold text-ink">{gym.name}</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {gym.public_id ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  void navigator.clipboard.writeText(gym.public_id ?? '').then(
-                    () => toast.success('Gym ID copied'),
-                    () => toast.error('Could not copy'),
-                  )
-                }}
-              >
-                Gym ID: {gym.public_id}
-              </Button>
-            ) : null}
-            {gym.join_code ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  void navigator.clipboard.writeText(gym.join_code ?? '').then(
-                    () => toast.success('Join code copied'),
-                    () => toast.error('Could not copy'),
-                  )
-                }}
-              >
-                Join code: {gym.join_code}
-              </Button>
-            ) : null}
+        <Card className="p-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted">
+                Gym identity
+              </p>
+              <p className="mt-1 truncate text-sm font-semibold text-ink">{gym.name}</p>
+              <p className="mt-1 text-[11px] text-muted">
+                Share the join code with new members so they can request to join this gym.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {gym.join_code ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  title="Copy join code"
+                  icon={<KeyRound className="h-4 w-4" />}
+                  onClick={() => {
+                    void navigator.clipboard.writeText(gym.join_code ?? '').then(
+                      () => toast.success('Join code copied'),
+                      () => toast.error('Could not copy'),
+                    )
+                  }}
+                >
+                  <span className="font-mono tracking-wide">Join code: {gym.join_code}</span>
+                </Button>
+              ) : (
+                <Badge tone="warning">Join code unavailable</Badge>
+              )}
+              {gym.public_id ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  title="Copy gym ID"
+                  icon={<Copy className="h-4 w-4" />}
+                  onClick={() => {
+                    void navigator.clipboard.writeText(gym.public_id ?? '').then(
+                      () => toast.success('Gym ID copied'),
+                      () => toast.error('Could not copy'),
+                    )
+                  }}
+                >
+                  Gym ID: {gym.public_id}
+                </Button>
+              ) : null}
+            </div>
           </div>
         </Card>
       ) : null}

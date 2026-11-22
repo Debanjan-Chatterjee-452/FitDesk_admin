@@ -1,12 +1,26 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, CheckCircle2, Clock3, RefreshCw, UserRound, XCircle } from 'lucide-react'
+import {
+  AlertTriangle,
+  CalendarDays,
+  CheckCircle2,
+  Clock3,
+  Droplets,
+  RefreshCw,
+  ScanEye,
+  UserRound,
+  XCircle,
+} from 'lucide-react'
 import { toast } from 'sonner'
-import { getDocumentSignedUrl } from '@/lib/api/profile'
-import { listJoinRequests, pendingJoinRequestCount, reviewJoinRequest } from '@/lib/api/joinRequests'
+import {
+  listJoinRequests,
+  pendingJoinRequestCount,
+  reviewJoinRequest,
+  type JoinRequestRow,
+} from '@/lib/api/joinRequests'
 import { toAppError } from '@/lib/errors'
 import { adminKeys } from '@/lib/queryKeys'
-import { formatDateTime } from '@/lib/format'
+import { formatDateOnly, formatDateTime } from '@/lib/format'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -14,10 +28,12 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { SectionLoader } from '@/components/ui/Spinner'
 import { ConfirmDialog } from '@/components/ui/Modal'
+import { JoinRequestReviewModal } from '@/components/joinRequests/JoinRequestReviewModal'
 
 export function JoinRequestsPage() {
   const queryClient = useQueryClient()
   const [declineTarget, setDeclineTarget] = useState<string | null>(null)
+  const [reviewTarget, setReviewTarget] = useState<JoinRequestRow | null>(null)
 
   const requestsQuery = useQuery({
     queryKey: [...adminKeys.all, 'join-requests'],
@@ -36,6 +52,7 @@ export function JoinRequestsPage() {
       reviewJoinRequest(id, approve),
     onSuccess: (_data, variables) => {
       toast.success(variables.approve ? 'Member approved.' : 'Request declined.')
+      setReviewTarget(null)
       void queryClient.invalidateQueries({ queryKey: [...adminKeys.all, 'join-requests'] })
       void queryClient.invalidateQueries({ queryKey: [...adminKeys.all, 'join-requests-count'] })
     },
@@ -99,7 +116,7 @@ export function JoinRequestsPage() {
             return (
               <Card key={request.id} className="p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0 space-y-1">
+                  <div className="min-w-0 space-y-1.5">
                     <div className="flex items-center gap-2">
                       <UserRound className="h-4 w-4 text-muted" />
                       <p className="truncate text-sm font-semibold text-ink">
@@ -110,9 +127,21 @@ export function JoinRequestsPage() {
                       </Badge>
                     </div>
                     <p className="truncate text-xs text-muted">{request.user_email}</p>
-                    {request.member_phone ? (
-                      <p className="truncate text-xs text-muted">{request.member_phone}</p>
-                    ) : null}
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted">
+                      {request.member_phone ? <span>{request.member_phone}</span> : null}
+                      {request.member_date_of_birth ? (
+                        <span className="inline-flex items-center gap-1">
+                          <CalendarDays className="h-3 w-3" />
+                          {formatDateOnly(request.member_date_of_birth)}
+                        </span>
+                      ) : null}
+                      {request.member_blood_group ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Droplets className="h-3 w-3" />
+                          {request.member_blood_group}
+                        </span>
+                      ) : null}
+                    </div>
                     {request.member_document_path ||
                     request.member_document_type ||
                     request.member_document_number ? (
@@ -129,24 +158,14 @@ export function JoinRequestsPage() {
                             <span className="text-muted">Number not provided</span>
                           )}
                         </div>
-                        {request.member_document_path ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={async () => {
-                              try {
-                                const url = await getDocumentSignedUrl(
-                                  request.member_document_path!,
-                                )
-                                window.open(url, '_blank', 'noopener,noreferrer')
-                              } catch (error) {
-                                toast.error(toAppError(error).message)
-                              }
-                            }}
-                          >
-                            View document
-                          </Button>
-                        ) : null}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          icon={<ScanEye className="h-4 w-4" />}
+                          onClick={() => setReviewTarget(request)}
+                        >
+                          Review details &amp; document
+                        </Button>
                       </div>
                     ) : null}
                     <p className="text-xs text-muted">
@@ -155,7 +174,15 @@ export function JoinRequestsPage() {
                   </div>
 
                   {isPending ? (
-                    <div className="flex shrink-0 gap-2">
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        icon={<ScanEye className="h-4 w-4" />}
+                        onClick={() => setReviewTarget(request)}
+                      >
+                        Review
+                      </Button>
                       <Button
                         size="sm"
                         icon={<CheckCircle2 className="h-4 w-4" />}
@@ -183,6 +210,19 @@ export function JoinRequestsPage() {
           })}
         </div>
       )}
+
+      <JoinRequestReviewModal
+        request={reviewTarget}
+        open={Boolean(reviewTarget)}
+        onClose={() => setReviewTarget(null)}
+        onApprove={() => {
+          if (reviewTarget) reviewMutation.mutate({ id: reviewTarget.id, approve: true })
+        }}
+        onDecline={() => {
+          if (reviewTarget) reviewMutation.mutate({ id: reviewTarget.id, approve: false })
+        }}
+        loading={reviewMutation.isPending}
+      />
 
       <ConfirmDialog
         open={Boolean(declineTarget)}
