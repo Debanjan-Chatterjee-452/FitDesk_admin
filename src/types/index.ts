@@ -1,5 +1,11 @@
 export type Gender = 'male' | 'female' | 'other' | 'prefer_not_to_say'
 export type BloodGroup = 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-'
+export type LegalDocumentType =
+  | 'Aadhaar Card'
+  | 'PAN Card'
+  | 'Driving Licence'
+  | 'Passport'
+  | 'Voter ID'
 export type PaymentState = 'Pending' | 'Paid' | 'Not Paid'
 export type MembershipState = 'pending' | 'active' | 'expired' | 'cancelled' | 'paused'
 
@@ -13,7 +19,9 @@ export interface AdminProfile {
   gender: Gender | null
   legal_document_path: string | null
   legal_document_name: string | null
-  legal_document_type: string | null
+  legal_document_mime_type: string | null
+  legal_document_type: LegalDocumentType | null
+  legal_document_number: string | null
   profile_completed: boolean
   created_at: string
   updated_at: string
@@ -209,5 +217,5 @@ export interface ProfileInput {
   gender: Gender
   legal_document_path: string | null
   legal_document_name: string | null
-  legal_document_type: string | null
+  legal_document_mime_type: string | null
 }

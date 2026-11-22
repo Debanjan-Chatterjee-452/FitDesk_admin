@@ -77,7 +77,7 @@ export async function saveMyProfile(input: ProfileSaveInput): Promise<AdminProfi
     if (uploadedPath && input.documentFile) {
       patch.legal_document_path = uploadedPath
       patch.legal_document_name = input.documentFile.name
-      patch.legal_document_type = input.documentFile.type
+      patch.legal_document_mime_type = input.documentFile.type
     }
 
     if (!documentPath) {

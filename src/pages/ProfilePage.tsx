@@ -282,7 +282,7 @@ export function ProfilePage() {
         gender: values.gender,
         legal_document_path: profile.legal_document_path,
         legal_document_name: profile.legal_document_name,
-        legal_document_type: profile.legal_document_type,
+        legal_document_mime_type: profile.legal_document_mime_type,
         currentDocumentPath: profile.legal_document_path,
         documentFile,
       })

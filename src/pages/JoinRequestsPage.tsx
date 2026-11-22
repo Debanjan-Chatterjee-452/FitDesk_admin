@@ -113,21 +113,41 @@ export function JoinRequestsPage() {
                     {request.member_phone ? (
                       <p className="truncate text-xs text-muted">{request.member_phone}</p>
                     ) : null}
-                    {request.member_document_path ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={async () => {
-                          try {
-                            const url = await getDocumentSignedUrl(request.member_document_path!)
-                            window.open(url, '_blank', 'noopener,noreferrer')
-                          } catch (error) {
-                            toast.error(toAppError(error).message)
-                          }
-                        }}
-                      >
-                        View document
-                      </Button>
+                    {request.member_document_path ||
+                    request.member_document_type ||
+                    request.member_document_number ? (
+                      <div className="space-y-2 rounded-xl border border-line/70 bg-elevated/40 p-2.5">
+                        <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                          <span className="font-semibold text-ink">
+                            {request.member_document_type ?? 'Legal document'}
+                          </span>
+                          {request.member_document_number ? (
+                            <span className="rounded-md bg-surface px-1.5 py-0.5 font-mono text-[11px] tracking-wide text-ink">
+                              {request.member_document_number}
+                            </span>
+                          ) : (
+                            <span className="text-muted">Number not provided</span>
+                          )}
+                        </div>
+                        {request.member_document_path ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                const url = await getDocumentSignedUrl(
+                                  request.member_document_path!,
+                                )
+                                window.open(url, '_blank', 'noopener,noreferrer')
+                              } catch (error) {
+                                toast.error(toAppError(error).message)
+                              }
+                            }}
+                          >
+                            View document
+                          </Button>
+                        ) : null}
+                      </div>
                     ) : null}
                     <p className="text-xs text-muted">
                       Requested {request.requested_at ? formatDateTime(request.requested_at) : '—'}

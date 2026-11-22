@@ -9,6 +9,8 @@ export interface JoinRequestRow {
   member_phone: string | null
   member_document_path: string | null
   member_document_name: string | null
+  member_document_type: string | null
+  member_document_number: string | null
 }
 
 export function listJoinRequests() {
