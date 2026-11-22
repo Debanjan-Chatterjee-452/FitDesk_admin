@@ -64,6 +64,16 @@ export function useAdminRealtime() {
           void queryClient.invalidateQueries({ queryKey: adminKeys.stats() })
         },
       )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'gyms', filter: `id=eq.${gymId}` },
+        () => {
+          // Keeps a second administrator's Overview in sync after a shutter
+          // toggle on another device.
+          void queryClient.invalidateQueries({ queryKey: adminKeys.gym() })
+          void queryClient.invalidateQueries({ queryKey: adminKeys.stats() })
+        },
+      )
       .subscribe()
 
     channelRef.current = channel
