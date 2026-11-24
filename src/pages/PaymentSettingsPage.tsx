@@ -420,7 +420,7 @@ export function PaymentSettingsPage() {
               </p>
               <p className="mt-1 text-[11px] leading-5 text-muted">
                 {enabledCount > 0
-                  ? 'Members see only these methods in the renewal flow. Nothing is marked paid until you verify the UTR in your bank statement.'
+                  ? 'Members see only these methods in the renewal flow. Nothing is marked paid until you confirm their payment in the Members table.'
                   : 'Enable at least one method and save. Until then, members cannot renew from the app.'}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
@@ -449,8 +449,8 @@ export function PaymentSettingsPage() {
               <p className="text-sm font-semibold text-ink">Direct UPI, human verified</p>
               <p className="mt-1 text-[11px] leading-5 text-muted">
                 FitDesk never stores card details and never calls a payment gateway. The member pays
-                your UPI ID or scans your QR, submits the reference, and you approve it from the
-                Members table. Cash payments are verified the same way.
+                your UPI ID or scans your QR and taps "I Have Paid"; you confirm it in the Members
+                table. Cash payments are confirmed with the 6-digit code shown to you.
               </p>
               <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-line bg-elevated px-3 py-2">
                 <span className="text-[10px] text-muted">Gym settings updated</span>

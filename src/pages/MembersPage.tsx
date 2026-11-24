@@ -233,8 +233,6 @@ function MemberActions({
         </>
       ) : null}
 
-      {member.membership_id && status !== 'cancelled' ? null : null}
-
       {!hasLeft && member.membership_id ? (
         <Button size="sm" variant="outline" onClick={() => onAdjustDates(member)}>
           Set start date
