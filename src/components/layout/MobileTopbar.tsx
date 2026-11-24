@@ -4,6 +4,7 @@ import { adminKeys } from '@/lib/queryKeys'
 import { getGymSettings } from '@/lib/api/dashboard'
 import { Badge } from '@/components/ui/Badge'
 import { NotificationBell } from '@/components/ui/NotificationBell'
+import { FitDeskIcon } from '@/components/ui/FitDeskLogo'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 
 export function MobileTopbar({ onMenu }: { onMenu: () => void }) {
@@ -21,9 +22,7 @@ export function MobileTopbar({ onMenu }: { onMenu: () => void }) {
           <Menu className="h-5 w-5" />
         </button>
         <div className="flex items-center gap-2">
-          <span className="grid h-8 w-8 place-items-center rounded-xl bg-primary text-[10px] font-extrabold tracking-[-0.08em] text-lime">
-            FD
-          </span>
+          <FitDeskIcon className="h-8 w-8 shrink-0 text-primary" />
           <div>
             <p className="text-[12px] font-semibold leading-tight text-ink">FitDesk Admin</p>
             <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-muted">Owner suite</p>

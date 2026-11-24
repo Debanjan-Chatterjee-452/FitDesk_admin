@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Bell, CheckCheck } from 'lucide-react'
+import { Bell, Banknote, CheckCheck, KeyRound, Smartphone } from 'lucide-react'
+import type { NotificationRow } from '@/types'
 import { useState } from 'react'
 import { adminKeys } from '@/lib/queryKeys'
 import {
@@ -10,6 +11,11 @@ import {
 } from '@/lib/api/notifications'
 import { cn } from '@/lib/format'
 import { formatDateTime } from '@/lib/format'
+
+function notificationCode(notification: NotificationRow): string | null {
+  const code = notification.payload?.otp_code
+  return typeof code === 'string' && /^\d{6}$/.test(code) ? code : null
+}
 
 export function NotificationBell({
   open: controlledOpen,
@@ -114,6 +120,29 @@ export function NotificationBell({
                   >
                     <p className="text-xs font-semibold text-ink">{n.title}</p>
                     <p className="mt-1 text-[11px] leading-5 text-muted">{n.body}</p>
+                    {notificationCode(n) ? (
+                      <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-warn/30 bg-warn-soft px-2.5 py-2">
+                        <KeyRound className="h-3.5 w-3.5 text-warn" />
+                        <span className="font-mono text-[16px] font-extrabold tracking-[0.2em] text-ink">
+                          {notificationCode(n)}
+                        </span>
+                        <span className="text-[9px] font-semibold uppercase tracking-[0.1em] text-muted">
+                          6-digit code · 5 min
+                        </span>
+                      </div>
+                    ) : null}
+                    {n.payload && typeof n.payload.payment_id === 'string' ? (
+                      <p className="mt-1.5 flex items-center gap-1 text-[9px] font-semibold text-primary">
+                        {n.kind === 'cash_payment_requested' ? (
+                          <Banknote className="h-3 w-3" />
+                        ) : (
+                          <Smartphone className="h-3 w-3" />
+                        )}
+                        {n.kind === 'cash_payment_requested'
+                          ? 'Cash payment · collect at desk'
+                          : 'App payment · check your UPI statement'}
+                      </p>
+                    ) : null}
                     <p className="mt-1.5 text-[10px] text-faint">{formatDateTime(n.created_at)}</p>
                   </button>
                 ))

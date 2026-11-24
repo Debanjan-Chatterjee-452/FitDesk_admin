@@ -21,6 +21,7 @@ import { saveBrowserPassword } from '@/lib/api/auth'
 import { isSupabaseConfigured } from '@/lib/env'
 import { toAppError } from '@/lib/errors'
 import { Button } from '@/components/ui/Button'
+import { FitDeskLogo } from '@/components/ui/FitDeskLogo'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { Input } from '@/components/ui/Input'
 import { FullPageLoader } from '@/components/ui/Spinner'
@@ -122,14 +123,9 @@ export function LoginPage() {
         <div className="absolute -right-24 top-1/4 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />
         <div className="absolute -bottom-32 -left-16 h-96 w-96 rounded-full bg-[#2C6F58]/30 blur-3xl" />
 
-        <div className="relative flex items-center gap-3">
-          <div className="grid h-11 w-11 place-items-center rounded-2xl bg-primary text-primary-ink shadow-[0_16px_40px_-18px_rgba(201,242,123,0.9)]">
-            <span className="text-[17px] font-extrabold tracking-[-0.1em]">FD</span>
-          </div>
-          <div>
-            <p className="text-lg font-semibold tracking-[-0.04em]">FitDesk</p>
-            <p className="text-[9px] font-bold uppercase tracking-[0.24em] text-white/40">Admin suite</p>
-          </div>
+        <div className="relative flex flex-col items-start gap-1">
+          <FitDeskLogo variant="full" className="h-16 w-auto text-lime" />
+          <p className="text-[9px] font-bold uppercase tracking-[0.24em] text-white/40">Admin suite</p>
         </div>
 
         <div className="relative my-auto max-w-xl py-16">

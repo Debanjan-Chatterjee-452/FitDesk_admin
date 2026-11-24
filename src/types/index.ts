@@ -139,6 +139,11 @@ export interface MemberRow {
   pending_reference: string | null
   pending_since: string | null
   pending_plan_name: string | null
+  /** upi, phonepe, google_pay, paytm or cash. */
+  pending_method: string | null
+  /** Live 6-digit cash code. Only present for a cash request. */
+  pending_otp: string | null
+  pending_otp_expires_at: string | null
   activity_at: string
   total_count?: number
   is_deactivated?: boolean
@@ -178,6 +183,20 @@ export interface PendingPayment {
   paid_at: string | null
   reviewed_at: string | null
   reviewed_by: string | null
+  checkout_state: string | null
+  reconciliation_required: boolean
+  reconciliation_reason: string | null
+  legacy_status: string | null
+  refund_status: string
+  refund_note: string | null
+  refunded_at: string | null
+  refunded_by: string | null
+  screenshot_path: string | null
+  payment_method: string | null
+  cash_otp: string | null
+  cash_otp_expires_at: string | null
+  upi_submitted_at: string | null
+  is_new_admission: boolean
 }
 
 export interface PaymentReviewResult {

@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   AlertTriangle,
+  Banknote,
   CalendarDays,
   Check,
   CheckCircle2,
@@ -75,6 +76,60 @@ function RenewalCell({ member }: { member: MemberRow }) {
               ? 'Ends today'
               : `${days} days left`}
       </p>
+    </div>
+  )
+}
+
+function paymentMethodLabel(method: string | null | undefined): string {
+  switch (method) {
+    case 'cash':
+      return 'Cash at desk'
+    case 'phonepe':
+      return 'UPI · PhonePe'
+    case 'google_pay':
+      return 'UPI · Google Pay'
+    case 'paytm':
+      return 'UPI · Paytm'
+    case 'upi':
+    default:
+      return 'UPI'
+  }
+}
+
+function PendingPaymentSummary({
+  member,
+  compact = false,
+}: {
+  member: MemberRow
+  compact?: boolean
+}) {
+  const isCash = member.pending_method === 'cash'
+  const amount = formatInr(member.pending_amount_inr)
+
+  return (
+    <div className={cn('min-w-0', compact ? 'space-y-1' : 'space-y-2')}>
+      <p className="flex flex-wrap items-center gap-1.5 text-[10px] font-semibold text-ink">
+        {isCash ? <Banknote className="h-3 w-3 text-warn" /> : <CheckCircle2 className="h-3 w-3 text-primary" />}
+        {paymentMethodLabel(member.pending_method)} · {amount}
+      </p>
+      {isCash ? (
+        <div className="inline-flex items-center gap-2 rounded-lg border border-warn/25 bg-warn-soft px-2 py-1">
+          <KeyRound className="h-3 w-3 text-warn" />
+          <span className="text-[9px] font-bold uppercase tracking-[0.1em] text-muted">Code</span>
+          <span className="font-mono text-[13px] font-extrabold tracking-[0.18em] text-ink">
+            {member.pending_otp ?? '—— ——'}
+          </span>
+        </div>
+      ) : (
+        <p className="truncate font-mono text-[9px] text-muted">
+          {member.pending_reference ?? 'Awaiting confirmation'}
+        </p>
+      )}
+      {!compact && member.pending_otp_expires_at ? (
+        <p className="text-[9px] text-muted">
+          Code valid until {formatDateTime(member.pending_otp_expires_at)}
+        </p>
+      ) : null}
     </div>
   )
 }
@@ -301,10 +356,13 @@ export function MembersPage() {
   const cashOtpMutation = useMutation({
     mutationFn: (paymentId: string) => generateCashOtp(paymentId),
     onSuccess: (result) => {
-      toast.success(`Cash OTP: ${result.otp}`, {
-        description: `Expires ${formatDateOnly(result.expires_at)}. Read it to the member — they enter it in the app.`,
+      toast.success(`Cash code: ${result.otp_code}`, {
+        description: `Valid for 5 minutes. Read it to the member — they enter it in the app.`,
         duration: 30_000,
       })
+      void queryClient.invalidateQueries({ queryKey: adminKeys.members() })
+      void queryClient.invalidateQueries({ queryKey: adminKeys.pendingPayments() })
+      void queryClient.invalidateQueries({ queryKey: adminKeys.notifications() })
     },
     onError: (error) => toast.error(toAppError(error).message),
   })
@@ -558,9 +616,9 @@ export function MembersPage() {
                         <PaymentBadge status={member.payment_status} />
                         {member.is_deactivated ? <Badge tone="danger">Deactivated</Badge> : null}
                         {member.payment_status === 'Pending' ? (
-                          <p className="mt-1 max-w-[150px] truncate text-[9px] font-medium text-warn">
-                            {member.pending_reference ?? 'No UTR'} · {formatInr(member.pending_amount_inr)}
-                          </p>
+                          <div className="mt-1">
+                            <PendingPaymentSummary member={member} compact />
+                          </div>
                         ) : null}
                       </td>
                       <td className="px-5 py-3.5">
@@ -635,12 +693,11 @@ export function MembersPage() {
                     {member.payment_status === 'Pending' ? (
                       <div className="col-span-2 border-t border-line pt-2">
                         <p className="text-[9px] font-bold uppercase tracking-[0.1em] text-faint">
-                          Pending payment
+                          Pending payment · {member.pending_plan_name ?? 'Plan'}
                         </p>
-                        <p className="mt-1 text-[11px] font-semibold text-ink">
-                          {member.pending_plan_name ?? 'Plan'} · {formatInr(member.pending_amount_inr)} ·{' '}
-                          {member.pending_reference ?? 'No UTR'}
-                        </p>
+                        <div className="mt-1">
+                          <PendingPaymentSummary member={member} />
+                        </div>
                       </div>
                     ) : null}
                   </div>
@@ -730,10 +787,12 @@ export function MembersPage() {
                 <p className="mt-1 font-semibold text-ink">{formatInr(selected.pending_amount_inr)}</p>
               </div>
               <div className="col-span-2 rounded-xl border border-line p-3">
-                <p className="text-[9px] font-bold uppercase tracking-[0.1em] text-faint">UPI / UTR reference</p>
-                <p className="mt-1 break-all font-mono text-[11px] font-semibold text-ink">
-                  {selected.pending_reference ?? 'No reference submitted'}
+                <p className="text-[9px] font-bold uppercase tracking-[0.1em] text-faint">
+                  Payment details
                 </p>
+                <div className="mt-1">
+                  <PendingPaymentSummary member={selected} />
+                </div>
                 <p className="mt-1 text-[9px] text-muted">
                   Submitted {formatDateTime(selected.pending_since)}
                 </p>
@@ -750,7 +809,7 @@ export function MembersPage() {
                 <Textarea
                   className="mt-3"
                   label="Reason for denial"
-                  placeholder="For example: UTR not found in the bank statement."
+                  placeholder="For example: payment not found in the bank statement."
                   value={note}
                   maxLength={300}
                   onChange={(event) => setNote(event.target.value)}
@@ -761,7 +820,7 @@ export function MembersPage() {
               <div className="flex items-start gap-2 rounded-xl border border-success/15 bg-success-soft p-3 text-[11px] leading-5 text-success">
                 <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
                 The renewal period is recalculated server-side, preserving any remaining paid days.
-                The member sees the updated dates immediately.
+                The member sees the updated dates immediately.{selected.pending_otp ? ' The cash code stops working as soon as you approve.' : ''}
               </div>
             )}
 

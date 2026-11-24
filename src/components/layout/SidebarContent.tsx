@@ -15,6 +15,7 @@ import { cn } from '@/lib/format'
 import { useQuery } from '@tanstack/react-query'
 import { pendingJoinRequestCount } from '@/lib/api/joinRequests'
 import { Avatar } from '@/components/ui/Avatar'
+import { FitDeskIcon } from '@/components/ui/FitDeskLogo'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 
 const items = [
@@ -50,10 +51,7 @@ export function SidebarContent({
   return (
     <div className="flex h-full flex-col bg-[#0A2A22] text-white">
       <div className="flex items-center gap-3 px-6 pb-8 pt-7">
-        <div className="relative grid h-10 w-10 place-items-center rounded-2xl bg-lime text-primary-ink shadow-[0_10px_30px_-12px_rgba(201,242,123,0.7)]">
-          <span className="text-[16px] font-extrabold tracking-[-0.1em]">FD</span>
-          <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-pine-deep bg-lime" />
-        </div>
+        <FitDeskIcon className="h-10 w-10 shrink-0 text-lime" />
         <div>
           <p className="text-[15px] font-semibold tracking-[-0.03em]">FitDesk</p>
           <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-white/40">Admin suite</p>

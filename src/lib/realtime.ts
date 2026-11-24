@@ -66,6 +66,18 @@ export function useAdminRealtime() {
       )
       .on(
         'postgres_changes',
+        { event: '*', schema: 'public', table: 'admin_notifications', filter: `gym_id=eq.${gymId}` },
+        () => {
+          // A member requesting cash / marking a UPI payment as paid must show
+          // up in the bell without waiting for a poll.
+          void queryClient.invalidateQueries({ queryKey: adminKeys.notifications() })
+          void queryClient.invalidateQueries({ queryKey: adminKeys.notificationsCount() })
+          void queryClient.invalidateQueries({ queryKey: adminKeys.pendingPayments() })
+          void queryClient.invalidateQueries({ queryKey: adminKeys.members() })
+        },
+      )
+      .on(
+        'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'gyms', filter: `id=eq.${gymId}` },
         () => {
           // Keeps a second administrator's Overview in sync after a shutter

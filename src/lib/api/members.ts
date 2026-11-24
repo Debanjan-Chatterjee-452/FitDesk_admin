@@ -86,7 +86,7 @@ export function listPendingPayments() {
 
 export async function generateCashOtp(paymentId: string) {
   try {
-    return await callRpc<{ otp: string; expires_at: string; payment_id: string }>(
+    return await callRpc<{ otp_code: string; expires_at: string; payment_id: string }>(
       'admin_generate_cash_otp',
       { p_payment_id: paymentId },
     )

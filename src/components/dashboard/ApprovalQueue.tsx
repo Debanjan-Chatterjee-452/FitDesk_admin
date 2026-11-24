@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ArrowUpRight, CheckCheck, Inbox } from 'lucide-react'
+import { ArrowUpRight, Banknote, CheckCheck, Inbox, KeyRound, Smartphone } from 'lucide-react'
 import type { PendingPayment } from '@/types'
 import { dedupeByKey } from '@/lib/dedupe'
 import { formatDateTime, formatInr } from '@/lib/format'
@@ -23,7 +23,7 @@ export function ApprovalQueue({
     <Card className="overflow-hidden">
       <CardHeader
         title="Approvals waiting"
-        description="Verify the UTR in your bank or UPI app before approving."
+        description="Collect cash or check your UPI statement before approving."
         action={
           <Link
             to="/members"
@@ -41,7 +41,7 @@ export function ApprovalQueue({
         <EmptyState
           icon={<CheckCheck className="h-5 w-5" />}
           title="Nothing waiting"
-          description="New UPI payments will appear here the moment a member submits a reference."
+          description="New cash and app payments will appear here the moment a member requests them."
           className="py-10"
         />
       ) : (
@@ -54,9 +54,27 @@ export function ApprovalQueue({
                   <p className="truncate text-[13px] font-semibold text-ink">{payment.member_name}</p>
                   <Badge tone="pending">Pending</Badge>
                 </div>
-                <p className="mt-0.5 truncate text-[11px] text-muted">
-                  {payment.package_name} · {payment.provider_payment_id ?? 'No reference'}
+                <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted">
+                  {payment.payment_method === 'cash' ? (
+                    <Banknote className="h-3 w-3 text-warn" />
+                  ) : (
+                    <Smartphone className="h-3 w-3 text-primary" />
+                  )}
+                  {payment.payment_method === 'cash'
+                    ? 'Cash at desk'
+                    : payment.payment_method?.replace(/_/g, ' ') || 'UPI'}
+                  {' · '}
+                  {payment.package_name}
                 </p>
+                {payment.cash_otp ? (
+                  <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-lg border border-warn/25 bg-warn-soft px-2 py-1 font-mono text-[12px] font-extrabold tracking-[0.16em] text-ink">
+                    <KeyRound className="h-3 w-3 text-warn" />
+                    {payment.cash_otp}
+                    <span className="font-sans text-[9px] font-semibold tracking-normal text-muted">
+                      6-digit · 5 min
+                    </span>
+                  </p>
+                ) : null}
               </div>
               <div className="hidden text-right sm:block">
                 <p className="text-[13px] font-semibold text-ink">{formatInr(payment.total_amount_inr)}</p>
