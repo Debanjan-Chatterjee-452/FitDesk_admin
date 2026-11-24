@@ -151,8 +151,12 @@ function MemberActions({
   onCashOtp: (member: MemberRow) => void
   cashOtpPending: boolean
 }) {
-  const hasPending = member.payment_status === 'Pending' && !!member.pending_payment_id
+  const hasPending =
+    member.gym_state === 'current' &&
+    member.payment_status === 'Pending' &&
+    !!member.pending_payment_id
   const status = member.membership_status
+  const hasLeft = member.gym_state === 'left'
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
@@ -188,11 +192,15 @@ function MemberActions({
         </>
       ) : (
         <span className="text-[10px] font-medium text-faint">
-          {member.payment_status === 'Paid' ? 'Settled' : 'No action'}
+          {hasLeft
+            ? 'Left gym'
+            : member.payment_status === 'Paid'
+              ? 'Settled'
+              : 'No action'}
         </span>
       )}
 
-      {member.membership_id && status !== 'cancelled' ? (
+      {!hasLeft && member.membership_id && status !== 'cancelled' ? (
         <>
           {status === 'paused' ? (
             <Button
@@ -227,20 +235,22 @@ function MemberActions({
 
       {member.membership_id && status !== 'cancelled' ? null : null}
 
-      {member.membership_id ? (
+      {!hasLeft && member.membership_id ? (
         <Button size="sm" variant="outline" onClick={() => onAdjustDates(member)}>
           Set start date
         </Button>
       ) : null}
 
-      <Button
-        size="sm"
-        variant="outline"
-        className="border-danger/20 text-danger hover:border-danger/30 hover:bg-danger-soft"
-        onClick={() => onDeactivate(member)}
-      >
-        {member.is_deactivated ? 'Reactivate' : 'Deactivate'}
-      </Button>
+      {!hasLeft ? (
+        <Button
+          size="sm"
+          variant="outline"
+          className="border-danger/20 text-danger hover:border-danger/30 hover:bg-danger-soft"
+          onClick={() => onDeactivate(member)}
+        >
+          {member.is_deactivated ? 'Reactivate' : 'Deactivate'}
+        </Button>
+      ) : null}
 
       {status === 'cancelled' ? (
         <span className="text-[10px] font-semibold text-danger">Cancelled</span>
@@ -614,6 +624,11 @@ export function MembersPage() {
                       </td>
                       <td className="px-5 py-3.5">
                         <PaymentBadge status={member.payment_status} />
+                        {member.gym_state === 'left' ? (
+                          <span className="ml-1.5">
+                            <Badge tone="danger">Left gym</Badge>
+                          </span>
+                        ) : null}
                         {member.is_deactivated ? <Badge tone="danger">Deactivated</Badge> : null}
                         {member.payment_status === 'Pending' ? (
                           <div className="mt-1">
@@ -676,7 +691,11 @@ export function MembersPage() {
                         <p className="truncate text-[10px] text-muted">{member.email ?? member.phone}</p>
                       </div>
                     </div>
-                    <PaymentBadge status={member.payment_status} />
+                    <div className="flex flex-wrap items-center justify-end gap-1.5">
+                      <PaymentBadge status={member.payment_status} />
+                      {member.gym_state === 'left' ? <Badge tone="danger">Left gym</Badge> : null}
+                      {member.is_deactivated ? <Badge tone="danger">Deactivated</Badge> : null}
+                    </div>
                   </div>
 
                   <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl bg-elevated p-3">
@@ -772,8 +791,19 @@ export function MembersPage() {
                 <p className="truncate text-[13px] font-semibold text-ink">{selected.full_name}</p>
                 <p className="truncate text-[10px] text-muted">{selected.email}</p>
               </div>
-              <PaymentBadge status={selected.payment_status} />
+              <div className="flex flex-wrap items-center justify-end gap-1.5">
+                <PaymentBadge status={selected.payment_status} />
+                {selected.gym_state === 'left' ? <Badge tone="danger">Left gym</Badge> : null}
+              </div>
             </div>
+
+            {selected.gym_state === 'left' && selected.left_at ? (
+              <div className="flex items-start gap-2 rounded-xl border border-danger/15 bg-danger-soft p-3 text-[11px] leading-5 text-danger">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                This member left the gym on {formatDateTime(selected.left_at)}. Their account and
+                documents remain with FitDesk.
+              </div>
+            ) : null}
 
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="rounded-xl border border-line p-3">

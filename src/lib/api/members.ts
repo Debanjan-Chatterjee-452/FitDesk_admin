@@ -42,7 +42,7 @@ export function generateExpiryNotifications() {
 }
 
 export function getMemberStatusCounts() {
-  return callRpc<{ all: number; pending: number; paid: number; not_paid: number }>(
+  return callRpc<{ all: number; pending: number; paid: number; not_paid: number; left: number }>(
     'admin_member_status_counts',
   )
 }

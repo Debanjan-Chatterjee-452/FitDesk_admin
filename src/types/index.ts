@@ -144,6 +144,9 @@ export interface MemberRow {
   /** Live 6-digit cash code. Only present for a cash request. */
   pending_otp: string | null
   pending_otp_expires_at: string | null
+  /** 'current' for an active gym member, 'left' after they left or changed gym. */
+  gym_state: 'current' | 'left'
+  left_at: string | null
   activity_at: string
   total_count?: number
   is_deactivated?: boolean

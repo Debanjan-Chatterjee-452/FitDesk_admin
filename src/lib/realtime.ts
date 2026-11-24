@@ -66,6 +66,24 @@ export function useAdminRealtime() {
       )
       .on(
         'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'gym_member_departures',
+          filter: `gym_id=eq.${gymId}`,
+        },
+        () => {
+          // A departing member disappears from profiles.gym_id, so the
+          // profile filter cannot deliver this event. The departure log does.
+          void queryClient.invalidateQueries({ queryKey: adminKeys.members() })
+          void queryClient.invalidateQueries({ queryKey: [...adminKeys.members(), 'counts'] })
+          void queryClient.invalidateQueries({ queryKey: adminKeys.stats() })
+          void queryClient.invalidateQueries({ queryKey: adminKeys.notifications() })
+          void queryClient.invalidateQueries({ queryKey: adminKeys.notificationsCount() })
+        },
+      )
+      .on(
+        'postgres_changes',
         { event: '*', schema: 'public', table: 'admin_notifications', filter: `gym_id=eq.${gymId}` },
         () => {
           // A member requesting cash / marking a UPI payment as paid must show
