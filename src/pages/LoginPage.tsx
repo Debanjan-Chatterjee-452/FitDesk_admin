@@ -1,10 +1,11 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { Navigate, Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import {
   AlertCircle,
+  ArrowLeft,
   ArrowRight,
   CheckCircle2,
   Eye,
@@ -17,7 +18,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/context/AuthContext'
-import { saveBrowserPassword } from '@/lib/api/auth'
+import { requestPasswordReset, saveBrowserPassword } from '@/lib/api/auth'
 import { isSupabaseConfigured } from '@/lib/env'
 import { toAppError } from '@/lib/errors'
 import { Button } from '@/components/ui/Button'
@@ -27,18 +28,26 @@ import { Input } from '@/components/ui/Input'
 import { FullPageLoader } from '@/components/ui/Spinner'
 
 const schema = z.object({
-  email: z.string().trim().min(1, 'Enter your admin email.').email('Enter a valid email address.'),
+  email: z.string().trim().toLowerCase().min(1, 'Enter your admin email.').email('Enter a valid email address.'),
   password: z.string().min(1, 'Enter your password.'),
   savePassword: z.boolean(),
 })
 
+const resetSchema = z.object({
+  email: z.string().trim().toLowerCase().min(1, 'Enter your admin email.').email('Enter a valid email address.'),
+})
+
 type FormValues = z.infer<typeof schema>
+type ResetValues = z.infer<typeof resetSchema>
 
 export function LoginPage() {
   const { session, loading, signIn } = useAuth()
   const navigate = useNavigate()
   const [showPassword, setShowPassword] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const [mode, setMode] = useState<'signin' | 'forgot'>('signin')
+  const [resetSent, setResetSent] = useState(false)
+  const [resetError, setResetError] = useState<string | null>(null)
 
   const {
     register,
@@ -52,6 +61,15 @@ export function LoginPage() {
       password: '',
       savePassword: true,
     },
+  })
+
+  const {
+    register: registerReset,
+    handleSubmit: handleResetSubmit,
+    formState: { errors: resetErrors, isSubmitting: resetSubmitting },
+  } = useForm<ResetValues>({
+    resolver: zodResolver(resetSchema),
+    defaultValues: { email: '' },
   })
 
   if (loading) return <FullPageLoader label="Checking secure session" />
@@ -84,7 +102,7 @@ export function LoginPage() {
       const next = await signIn(values.email, values.password)
 
       if (values.savePassword) {
-        const result = await saveBrowserPassword(values.email, values.password)
+        const result = await saveBrowserPassword(values.email.trim().toLowerCase(), values.password)
         if (result === 'saved') {
           toast.success('Password saved in this browser.')
         } else if (result === 'unsupported') {
@@ -100,13 +118,24 @@ export function LoginPage() {
     }
   }
 
+  const onForgotSubmit = async (values: ResetValues) => {
+    setResetError(null)
+    setResetSent(false)
+    try {
+      await requestPasswordReset(values.email)
+      setResetSent(true)
+    } catch (error) {
+      setResetError(toAppError(error).message)
+    }
+  }
+
   const savePasswordNow = async () => {
     const values = getValues()
     if (!values.email || !values.password) {
       toast.info('Enter your email and password first.')
       return
     }
-    const result = await saveBrowserPassword(values.email, values.password)
+    const result = await saveBrowserPassword(values.email.trim().toLowerCase(), values.password)
     if (result === 'saved') {
       toast.success('Password saved in this browser.')
     } else if (result === 'unsupported') {
@@ -139,7 +168,7 @@ export function LoginPage() {
             <span className="text-primary-ink">Not the clipboard.</span>
           </h1>
           <p className="mt-6 max-w-md text-[15px] leading-7 text-white/58">
-            Payments, renewals, packages, attendance and closures — the whole gym in one considered
+            Payments, renewals, packages, attendance and closures â€” the whole gym in one considered
             workspace, built for the person at the front desk.
           </p>
 
@@ -196,6 +225,68 @@ export function LoginPage() {
             </p>
           </div>
 
+          {mode === 'forgot' ? (
+            <form onSubmit={handleResetSubmit(onForgotSubmit)} className="space-y-4" noValidate>
+              {resetSent ? (
+                <div
+                  role="status"
+                  className="flex items-start gap-2.5 rounded-xl border border-success/15 bg-success-soft px-3.5 py-3 text-xs leading-5 text-success"
+                >
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                  <p>
+                    Reset link sent. Check your inbox and spam folder, then open the link to set a
+                    new password.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <p className="text-sm leading-6 text-muted">
+                    Enter the email you use for this admin account. We'll send a secure link to set a
+                    new password.
+                  </p>
+                  <Input
+                    label="Admin email"
+                    type="email"
+                    autoComplete="username"
+                    placeholder="owner@fitdesk.in"
+                    leadingIcon={<Mail className="h-4 w-4" />}
+                    error={resetErrors.email?.message}
+                    {...registerReset('email')}
+                  />
+                  {resetError ? (
+                    <div
+                      role="alert"
+                      className="flex items-start gap-2.5 rounded-xl border border-danger/15 bg-danger-soft px-3.5 py-3 text-xs leading-5 text-danger"
+                    >
+                      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                      {resetError}
+                    </div>
+                  ) : null}
+                  <Button
+                    type="submit"
+                    size="lg"
+                    loading={resetSubmitting}
+                    className="w-full justify-between"
+                  >
+                    <span>Send reset link</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('signin')
+                  setResetError(null)
+                  setResetSent(false)
+                }}
+                className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Back to sign in
+              </button>
+            </form>
+          ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
             <Input
               label="Admin email"
@@ -260,6 +351,20 @@ export function LoginPage() {
               <ArrowRight className="h-4 w-4" />
             </Button>
           </form>
+          )}
+
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={() => {
+                setMode('forgot')
+                setFormError(null)
+              }}
+              className="text-xs font-semibold text-primary underline-offset-4 hover:underline"
+            >
+              Forgot your password?
+            </button>
+          </div>
 
           <div className="mt-6 rounded-xl border border-line bg-surface/60 px-4 py-3">
             <p className="flex items-start gap-2 text-[11px] leading-5 text-muted">
@@ -280,10 +385,11 @@ export function LoginPage() {
           </p>
 
           <p className="mt-8 text-center text-[10px] text-faint lg:text-left">
-            Protected by Supabase Auth · FitDesk Admin v1.0
+            Protected by Supabase Auth Â· FitDesk Admin v1.0
           </p>
         </div>
       </section>
     </div>
   )
 }
+

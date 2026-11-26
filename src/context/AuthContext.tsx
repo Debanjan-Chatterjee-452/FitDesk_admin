@@ -72,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshProfile = useCallback(async () => {
     if (!session) return
-    const profile = await refreshAdminProfile(session.userId)
+    const profile = await refreshAdminProfile()
     setSession((current) => (current ? { ...current, profile } : current))
   }, [session])
 

@@ -6,7 +6,12 @@ import { z } from 'zod'
 import { AlertCircle, ArrowRight, KeyRound, LoaderCircle, ShieldCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/context/AuthContext'
-import { updatePassword } from '@/lib/api/auth'
+import {
+  exchangeEmailLink,
+  onPasswordRecovery,
+  recoverFromHash,
+  updatePassword,
+} from '@/lib/api/auth'
 import { toAppError } from '@/lib/errors'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -48,55 +53,65 @@ export function ResetPasswordPage() {
 
   useEffect(() => {
     let active = true
-    const supabase = (window as unknown as { __supabase?: unknown }).__supabase
-    void supabase
+    let unsubscribe: (() => void) | undefined
+
+    const ready = () => {
+      if (!active) return
+      window.history.replaceState({}, '', '/reset-password')
+      setPhase('ready')
+    }
+    const invalid = (message: string) => {
+      if (!active) return
+      setLinkError(message)
+      setPhase('invalid')
+    }
+
     const check = async () => {
       const params = new URLSearchParams(window.location.search)
       const linkErrorParam = params.get('error_description') ?? params.get('error')
       const code = params.get('code')
 
       if (linkErrorParam) {
-        if (!active) return
-        setLinkError('This password reset link is invalid or has expired. Request a new one.')
-        setPhase('invalid')
-        return
-      }
-
-      if (code) {
-        try {
-          const { exchangeEmailLink } = await import('@/lib/api/auth')
-          await exchangeEmailLink(code)
-          if (!active) return
-          window.history.replaceState({}, '', '/reset-password')
-          setPhase('ready')
-        } catch (error) {
-          if (!active) return
-          setLinkError(toAppError(error).message)
-          setPhase('invalid')
-        }
+        invalid('This password reset link is invalid or has expired. Request a new one.')
         return
       }
 
       try {
-        const { getSupabase } = await import('@/lib/supabase')
-        const client = getSupabase()
-        const { data } = await client.auth.getSession()
-        if (!active) return
-        if (data.session) {
-          setPhase('ready')
-        } else {
-          setLinkError('This page needs a valid password reset link. Request a new one from your profile.')
-          setPhase('invalid')
+        // Implicit (hash) recovery links must set the session before the form
+        // is usable; PKCE links arrive with a one-time ?code.
+        const fromHash = await recoverFromHash()
+        if (fromHash) {
+          ready()
+          return
         }
-      } catch {
+        if (code) {
+          await exchangeEmailLink(code)
+          ready()
+          return
+        }
+      } catch (error) {
+        invalid(toAppError(error).message)
+        return
+      }
+
+      // A PASSWORD_RECOVERY event may arrive after the first render (or when
+      // the link opened in a different tab).
+      unsubscribe = onPasswordRecovery(() => ready())
+
+      try {
+        const { getSupabase } = await import('@/lib/supabase')
+        const { data } = await getSupabase().auth.getSession()
         if (!active) return
-        setLinkError('Could not verify the reset link.')
-        setPhase('invalid')
+        if (data.session) ready()
+        else invalid('This page needs a valid password reset link. Request one from the sign-in page.')
+      } catch {
+        invalid('Could not verify the reset link.')
       }
     }
     void check()
     return () => {
       active = false
+      unsubscribe?.()
     }
   }, [])
 

@@ -1,7 +1,10 @@
-import type { AdminProfile, GymSettings } from '@/types'
+﻿import type { AdminProfile, GymSettings } from '@/types'
 import { AppError, toAppError } from '../errors'
 import { getSupabase } from '../supabase'
 import { callRpc } from './client'
+
+/** Production auth callback. Never derive this from localhost during a reset. */
+export const ADMIN_RESET_URL = 'https://fitdesk-admin.vercel.app/reset-password'
 
 export interface AdminSession {
   userId: string
@@ -17,16 +20,12 @@ export interface AdminSession {
   isPlatformOwner: boolean
 }
 
-async function loadProfile(userId: string): Promise<AdminProfile> {
-  const { data, error } = await getSupabase()
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .single()
-
-  if (error) throw toAppError(error)
-  if (!data) throw new AppError('PROFILE_NOT_FOUND', 'The admin profile could not be loaded.')
-  return data as AdminProfile
+async function loadProfile(): Promise<AdminProfile> {
+  // A SECURITY DEFINER lookup avoids an RLS/session-timing race on a device
+  // that has just signed in.
+  const data = await callRpc<AdminProfile>('admin_get_my_profile')
+  if (!data || !data.id) throw new AppError('PROFILE_NOT_FOUND', 'The admin profile could not be loaded.')
+  return data
 }
 
 async function assertAdmin(): Promise<boolean> {
@@ -95,7 +94,7 @@ export async function signInAdmin(email: string, password: string): Promise<Admi
   return {
     userId: data.user.id,
     email: data.user.email ?? email,
-    profile: await loadProfile(data.user.id),
+    profile: await loadProfile(),
     isAdmin,
     ...gymContext,
     isPlatformOwner,
@@ -121,7 +120,7 @@ export async function restoreAdminSession(): Promise<AdminSession | null> {
   return {
     userId: data.session.user.id,
     email: data.session.user.email ?? '',
-    profile: await loadProfile(data.session.user.id),
+    profile: await loadProfile(),
     isAdmin,
     ...gymContext,
     isPlatformOwner,
@@ -129,33 +128,69 @@ export async function restoreAdminSession(): Promise<AdminSession | null> {
 }
 
 export async function signOutAdmin(): Promise<void> {
-  const { error } = await getSupabase().auth.signOut()
+  // Local scope only: signing out on one device must never revoke sessions
+  // already open on a member's or admin's other devices.
+  const { error } = await getSupabase().auth.signOut({ scope: 'local' })
   if (error) throw toAppError(error)
 }
 
 export async function requestPasswordReset(email: string): Promise<void> {
-  const supabase = getSupabase()
-  const redirectTo = `${window.location.origin}/reset-password`
-  const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-    redirectTo,
-  })
+  const { error } = await getSupabase().auth.resetPasswordForEmail(
+    email.trim().toLowerCase(),
+    { redirectTo: ADMIN_RESET_URL },
+  )
   if (error) throw toAppError(error)
 }
 
+/** Completes a PKCE recovery link (?code=...). */
 export async function exchangeEmailLink(code: string): Promise<void> {
   const trimmed = code.trim()
   if (!trimmed) throw new AppError('EMAIL_LINK_INVALID', 'This email link is incomplete. Request a new one.')
   const { error } = await getSupabase().auth.exchangeCodeForSession(trimmed)
   if (error) throw toAppError(error)
 }
+
+/** Handles implicit/hash recovery links (#access_token=...&type=recovery). */
+export async function recoverFromHash(): Promise<boolean> {
+  const hash = window.location.hash.replace(/^#/, '')
+  if (!hash) return false
+  const params = new URLSearchParams(hash)
+  const accessToken = params.get('access_token')
+  const refreshToken = params.get('refresh_token')
+  if (!accessToken || !refreshToken) return false
+
+  const type = params.get('type')
+  if (type && type !== 'recovery' && type !== 'signup') return false
+
+  const { error } = await getSupabase().auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  })
+  if (error) throw toAppError(error)
+  window.history.replaceState({}, '', window.location.pathname)
+  return true
+}
+
+/**
+ * Supabase fires PASSWORD_RECOVERY when a recovery link establishes a session.
+ * Listening for it means the Set New Password form opens even if the page was
+ * loaded before the event arrived, or when the link used implicit tokens.
+ */
+export function onPasswordRecovery(handler: () => void): () => void {
+  const { data } = getSupabase().auth.onAuthStateChange((event) => {
+    if (event === 'PASSWORD_RECOVERY') handler()
+  })
+  return () => data.subscription.unsubscribe()
+}
+
 export async function updatePassword(password: string): Promise<void> {
   const supabase = getSupabase()
   const { error } = await supabase.auth.updateUser({ password })
   if (error) throw toAppError(error)
 }
 
-export async function refreshAdminProfile(userId: string): Promise<AdminProfile> {
-  return loadProfile(userId)
+export async function refreshAdminProfile(): Promise<AdminProfile> {
+  return loadProfile()
 }
 
 export interface OwnerSignUpInput {
@@ -285,3 +320,4 @@ export async function saveBrowserPassword(
     return 'failed'
   }
 }
+

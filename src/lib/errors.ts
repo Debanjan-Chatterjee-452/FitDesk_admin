@@ -12,6 +12,10 @@ const FRIENDLY_MESSAGES: Record<string, string> = {
   GYM_SUSPENDED: 'This gym is suspended. Contact FitDesk support.',
   AUTH_REQUIRED: 'Your session has expired. Please sign in again.',
   ADMIN_REQUIRED: 'This account does not have admin access.',
+  PROFILE_NOT_FOUND: 'No admin profile is linked to this account. Contact FitDesk support.',
+  EMAIL_NOT_CONFIRMED: 'Confirm your email address before signing in. Check your inbox.',
+  RATE_LIMITED: 'Too many attempts. Wait a minute and try again.',
+  USER_EXISTS: 'An account already exists with this email. Try signing in instead.',
   GYM_NOT_FOUND: 'The gym could not be found.',
   INVALID_UPI_ID: 'Enter a valid UPI ID, for example gym@okhdfcbank.',
   QR_PATH_GYM_MISMATCH: 'That QR file does not belong to this gym.',
@@ -69,6 +73,12 @@ export function toAppError(error: unknown): AppError {
     if (message) {
       if (/invalid login credentials/i.test(message)) {
         return new AppError('INVALID_CREDENTIALS', 'The email or password is incorrect.')
+      }
+      if (/email not confirmed|email address not confirmed/i.test(message)) {
+        return new AppError('EMAIL_NOT_CONFIRMED', FRIENDLY_MESSAGES.EMAIL_NOT_CONFIRMED)
+      }
+      if (/too many requests|rate limit|security purposes/i.test(message)) {
+        return new AppError('RATE_LIMITED', FRIENDLY_MESSAGES.RATE_LIMITED)
       }
       if (/failed to fetch|network/i.test(message)) {
         return new AppError('NETWORK', 'Could not reach FitDesk. Check your connection and retry.')
