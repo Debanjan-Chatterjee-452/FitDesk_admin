@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   KeyRound,
   Pause,
+  Pencil,
   Play,
   Trash2,
   Clock3,
@@ -21,7 +22,18 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { MemberRow, PaymentReviewResult } from '@/types'
-import { adjustMembershipDates, cancelMembership, generateCashOtp, getMemberStatusCounts, listMembersPage, pauseMembership, resumeMembership, reviewPayment, setMemberActive } from '@/lib/api/members'
+import {
+  adjustMembershipDates,
+  cancelMembership,
+  generateCashOtp,
+  getMemberStatusCounts,
+  listMembersPage,
+  pauseMembership,
+  resumeMembership,
+  reviewPayment,
+  setMemberActive,
+  updateMemberMembership,
+} from '@/lib/api/members'
 import { dedupeByKey } from '@/lib/dedupe'
 import { getAvatarSignedUrl } from '@/lib/api/profile'
 import { toAppError } from '@/lib/errors'
@@ -57,6 +69,13 @@ const filterLabels: Array<{ value: Filter; label: string }> = [
   { value: 'not_paid', label: 'Not paid' },
 ]
 
+function addDaysToIso(value: string, days: number): string {
+  const date = new Date(`${value}T12:00:00Z`)
+  if (Number.isNaN(date.getTime())) return value
+  date.setUTCDate(date.getUTCDate() + days)
+  return date.toISOString().slice(0, 10)
+}
+
 function RenewalCell({ member }: { member: MemberRow }) {
   if (!member.ends_on) {
     return <span className="text-[11px] text-faint">No active plan</span>
@@ -69,7 +88,7 @@ function RenewalCell({ member }: { member: MemberRow }) {
       <p className="text-[12px] font-semibold text-ink">{formatDateOnly(member.ends_on)}</p>
       <p className={cn('mt-0.5 text-[10px] font-medium', tone)}>
         {days == null
-          ? '—'
+          ? 'â€”'
           : days < 0
             ? `${Math.abs(days)} days overdue`
             : days === 0
@@ -85,11 +104,11 @@ function paymentMethodLabel(method: string | null | undefined): string {
     case 'cash':
       return 'Cash at desk'
     case 'phonepe':
-      return 'UPI · PhonePe'
+      return 'UPI Â· PhonePe'
     case 'google_pay':
-      return 'UPI · Google Pay'
+      return 'UPI Â· Google Pay'
     case 'paytm':
-      return 'UPI · Paytm'
+      return 'UPI Â· Paytm'
     case 'upi':
     default:
       return 'UPI'
@@ -110,14 +129,14 @@ function PendingPaymentSummary({
     <div className={cn('min-w-0', compact ? 'space-y-1' : 'space-y-2')}>
       <p className="flex flex-wrap items-center gap-1.5 text-[10px] font-semibold text-ink">
         {isCash ? <Banknote className="h-3 w-3 text-warn" /> : <CheckCircle2 className="h-3 w-3 text-primary" />}
-        {paymentMethodLabel(member.pending_method)} · {amount}
+        {paymentMethodLabel(member.pending_method)} Â· {amount}
       </p>
       {isCash ? (
         <div className="inline-flex items-center gap-2 rounded-lg border border-warn/25 bg-warn-soft px-2 py-1">
           <KeyRound className="h-3 w-3 text-warn" />
           <span className="text-[9px] font-bold uppercase tracking-[0.1em] text-muted">Code</span>
           <span className="font-mono text-[13px] font-extrabold tracking-[0.18em] text-ink">
-            {member.pending_otp ?? '—— ——'}
+            {member.pending_otp ?? 'â€”â€” â€”â€”'}
           </span>
         </div>
       ) : (
@@ -141,6 +160,7 @@ function MemberActions({
   onDeactivate,
   onAdjustDates,
   onCashOtp,
+  onEdit,
   cashOtpPending,
 }: {
   member: MemberRow
@@ -149,6 +169,7 @@ function MemberActions({
   onDeactivate: (member: MemberRow) => void
   onAdjustDates: (member: MemberRow) => void
   onCashOtp: (member: MemberRow) => void
+  onEdit: (member: MemberRow) => void
   cashOtpPending: boolean
 }) {
   const hasPending =
@@ -243,7 +264,17 @@ function MemberActions({
         <Button
           size="sm"
           variant="outline"
-          className="border-danger/20 text-danger hover:border-danger/30 hover:bg-danger-soft"
+          icon={<Pencil className="h-3.5 w-3.5" />}
+          onClick={() => onEdit(member)}
+        >
+          Edit
+        </Button>
+      ) : null}
+
+      {!hasLeft ? (
+        <Button
+          size="sm"
+          variant="outline"
           onClick={() => onDeactivate(member)}
         >
           {member.is_deactivated ? 'Reactivate' : 'Deactivate'}
@@ -272,6 +303,11 @@ export function MembersPage() {
   const [note, setNote] = useState('')
   const [membershipAction, setMembershipAction] = useState<{ member: MemberRow; type: 'cancel' | 'pause' | 'resume' } | null>(null)
   const [actionReason, setActionReason] = useState('')
+  const [editingMember, setEditingMember] = useState<MemberRow | null>(null)
+  const [editStart, setEditStart] = useState('')
+  const [editEnd, setEditEnd] = useState('')
+  const [editPaid, setEditPaid] = useState(true)
+  const [editError, setEditError] = useState<string | null>(null)
   const queryClient = useQueryClient()
 
   useEffect(() => {
@@ -365,7 +401,7 @@ export function MembersPage() {
     mutationFn: (paymentId: string) => generateCashOtp(paymentId),
     onSuccess: (result) => {
       toast.success(`Cash code: ${result.otp_code}`, {
-        description: `Valid for 5 minutes. Read it to the member — they enter it in the app.`,
+        description: `Valid for 5 minutes. Read it to the member â€” they enter it in the app.`,
         duration: 30_000,
       })
       void queryClient.invalidateQueries({ queryKey: adminKeys.members() })
@@ -373,6 +409,37 @@ export function MembersPage() {
       void queryClient.invalidateQueries({ queryKey: adminKeys.notifications() })
     },
     onError: (error) => toast.error(toAppError(error).message),
+  })
+
+  const openMemberEditor = (member: MemberRow) => {
+    setEditingMember(member)
+    setEditStart(member.starts_on ?? new Date().toISOString().slice(0, 10))
+    setEditEnd(member.ends_on ?? '')
+    setEditPaid(member.payment_status === 'Paid')
+    setEditError(null)
+  }
+
+  const editMembershipMutation = useMutation({
+    mutationFn: (input: {
+      userId: string
+      startsOn: string
+      endsOn: string
+      isPaid: boolean
+    }) => updateMemberMembership(input),
+    onSuccess: (result) => {
+      toast.success(
+        result.is_paid
+          ? `Marked Paid Â· valid ${formatDateOnly(result.starts_on)} â€“ ${formatDateOnly(result.ends_on)}.`
+          : 'Member marked Not Paid.',
+      )
+      setEditingMember(null)
+      void queryClient.invalidateQueries({ queryKey: adminKeys.members() })
+      void queryClient.invalidateQueries({ queryKey: [...adminKeys.members(), 'counts'] })
+      void queryClient.invalidateQueries({ queryKey: adminKeys.pendingPayments() })
+      void queryClient.invalidateQueries({ queryKey: adminKeys.stats() })
+      void queryClient.invalidateQueries({ queryKey: adminKeys.notifications() })
+    },
+    onError: (error) => setEditError(toAppError(error).message),
   })
 
   const membershipMutation = useMutation({
@@ -416,7 +483,7 @@ export function MembersPage() {
     mutationFn: (input: { member: MemberRow; startsOn: string }) =>
       adjustMembershipDates(input.member.membership_id!, input.startsOn),
     onSuccess: (result) => {
-      toast.success(`Membership updated: ${result.starts_on} → ${result.ends_on}`)
+      toast.success(`Membership updated: ${result.starts_on} â†’ ${result.ends_on}`)
       void queryClient.invalidateQueries({ queryKey: adminKeys.members() })
       void queryClient.invalidateQueries({ queryKey: adminKeys.stats() })
     },
@@ -459,7 +526,7 @@ export function MembersPage() {
       <PageHeader
         eyebrow="Members"
         title="The people on the floor."
-        description="One row per account — not per login. Review payments, approve renewals, and keep plans current."
+        description="One row per account â€” not per login. Review payments, approve renewals, and keep plans current."
         action={
           <Button
             variant="outline"
@@ -496,7 +563,7 @@ export function MembersPage() {
                 {item.value === 'not_paid' ? 'Not paid' : item.label.replace(' members', '')}
               </span>
               <span className="mt-2 block text-2xl font-semibold leading-none tracking-[-0.05em]">
-                {membersQuery.isLoading ? '—' : formatNumber(counts[item.value])}
+                {membersQuery.isLoading ? 'â€”' : formatNumber(counts[item.value])}
               </span>
               <span
                 className={cn(
@@ -522,7 +589,7 @@ export function MembersPage() {
           <div className="w-full sm:max-w-sm">
             <Input
               aria-label="Search members"
-              placeholder="Search name, email, phone, or UTR…"
+              placeholder="Search name, email, phone, or UTRâ€¦"
               leadingIcon={<Search className="h-4 w-4" />}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
@@ -638,7 +705,7 @@ export function MembersPage() {
                         <RenewalCell member={member} />
                       </td>
                       <td className="px-5 py-3.5 text-right">
-                        <MemberActions member={member} onDecision={openDecision} onMembershipAction={(m, t) => { setMembershipAction({ member: m, type: t }); setActionReason(t === "cancel" ? "" : "Emergency") }} onDeactivate={(m) => { if (!m.is_deactivated && !window.confirm('Deactivate this member? Historical records will be preserved.')) return; deactivationMutation.mutate(m) }} onAdjustDates={(m) => { const value = window.prompt('Enter membership start date (YYYY-MM-DD):', m.starts_on ?? ''); if (!value) return; adjustDatesMutation.mutate({ member: m, startsOn: value }) }} onCashOtp={(m) => { if (!m.pending_payment_id) return; cashOtpMutation.mutate(m.pending_payment_id) }} cashOtpPending={cashOtpMutation.isPending} />
+                        <MemberActions member={member} onDecision={openDecision} onMembershipAction={(m, t) => { setMembershipAction({ member: m, type: t }); setActionReason(t === "cancel" ? "" : "Emergency") }} onDeactivate={(m) => { if (!m.is_deactivated && !window.confirm('Deactivate this member? Historical records will be preserved.')) return; deactivationMutation.mutate(m) }} onAdjustDates={(m) => { const value = window.prompt('Enter membership start date (YYYY-MM-DD):', m.starts_on ?? ''); if (!value) return; adjustDatesMutation.mutate({ member: m, startsOn: value }) }} onCashOtp={(m) => { if (!m.pending_payment_id) return; cashOtpMutation.mutate(m.pending_payment_id) }} onEdit={openMemberEditor} cashOtpPending={cashOtpMutation.isPending} />
                       </td>
                     </tr>
                   ))}
@@ -649,8 +716,8 @@ export function MembersPage() {
             <div className="flex flex-col gap-3 border-t border-line px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-muted">
                 {membersQuery.isLoading
-                  ? 'Loading members…'
-                  : `Showing ${members.length === 0 ? 0 : offset + 1}–${offset + members.length} of ${totalCount}`}
+                  ? 'Loading membersâ€¦'
+                  : `Showing ${members.length === 0 ? 0 : offset + 1}â€“${offset + members.length} of ${totalCount}`}
               </p>
               <div className="flex gap-2">
                 <Button
@@ -710,7 +777,7 @@ export function MembersPage() {
                     {member.payment_status === 'Pending' ? (
                       <div className="col-span-2 border-t border-line pt-2">
                         <p className="text-[9px] font-bold uppercase tracking-[0.1em] text-faint">
-                          Pending payment · {member.pending_plan_name ?? 'Plan'}
+                          Pending payment Â· {member.pending_plan_name ?? 'Plan'}
                         </p>
                         <div className="mt-1">
                           <PendingPaymentSummary member={member} />
@@ -724,7 +791,7 @@ export function MembersPage() {
                       <CalendarDays className="h-3 w-3" />
                       Joined {formatDateOnly(member.joined_at)}
                     </span>
-                    <MemberActions member={member} onDecision={openDecision} onMembershipAction={(m, t) => { setMembershipAction({ member: m, type: t }); setActionReason(t === "cancel" ? "" : "Emergency") }} onDeactivate={(m) => { if (!m.is_deactivated && !window.confirm('Deactivate this member? Historical records will be preserved.')) return; deactivationMutation.mutate(m) }} onAdjustDates={(m) => { const value = window.prompt('Enter membership start date (YYYY-MM-DD):', m.starts_on ?? ''); if (!value) return; adjustDatesMutation.mutate({ member: m, startsOn: value }) }} onCashOtp={(m) => { if (!m.pending_payment_id) return; cashOtpMutation.mutate(m.pending_payment_id) }} cashOtpPending={cashOtpMutation.isPending} />
+                    <MemberActions member={member} onDecision={openDecision} onMembershipAction={(m, t) => { setMembershipAction({ member: m, type: t }); setActionReason(t === "cancel" ? "" : "Emergency") }} onDeactivate={(m) => { if (!m.is_deactivated && !window.confirm('Deactivate this member? Historical records will be preserved.')) return; deactivationMutation.mutate(m) }} onAdjustDates={(m) => { const value = window.prompt('Enter membership start date (YYYY-MM-DD):', m.starts_on ?? ''); if (!value) return; adjustDatesMutation.mutate({ member: m, startsOn: value }) }} onCashOtp={(m) => { if (!m.pending_payment_id) return; cashOtpMutation.mutate(m.pending_payment_id) }} onEdit={openMemberEditor} cashOtpPending={cashOtpMutation.isPending} />
                   </div>
                 </div>
               ))}
@@ -913,6 +980,105 @@ export function MembersPage() {
           </div>
         ) : null}
       </ConfirmDialog>
+
+      <Modal
+        open={!!editingMember}
+        onClose={() => {
+          if (editMembershipMutation.isPending) return
+          setEditingMember(null)
+          setEditError(null)
+        }}
+        title={`Edit ${editingMember?.full_name ?? 'member'}`}
+        description="Set membership dates and payment status. The member app updates immediately."
+        footer={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => setEditingMember(null)}
+              disabled={editMembershipMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              loading={editMembershipMutation.isPending}
+              onClick={() => {
+                if (!editingMember) return
+                if (!editStart || !editEnd) {
+                  setEditError('Choose both a start date and an end date.')
+                  return
+                }
+                if (editEnd < editStart) {
+                  setEditError('The end date cannot be before the start date.')
+                  return
+                }
+                editMembershipMutation.mutate({
+                  userId: editingMember.user_id,
+                  startsOn: editStart,
+                  endsOn: editEnd,
+                  isPaid: editPaid,
+                })
+              }}
+            >
+              Save & sync
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Input
+              label="Start date"
+              type="date"
+              value={editStart}
+              onChange={(event) => {
+                const next = event.target.value
+                setEditStart(next)
+                const duration = editingMember?.plan_duration_days
+                if (next && duration && duration > 0) {
+                  setEditEnd(addDaysToIso(next, duration - 1))
+                }
+              }}
+            />
+            <Input
+              label="Valid until (end date)"
+              type="date"
+              value={editEnd}
+              onChange={(event) => setEditEnd(event.target.value)}
+              hint={
+                editingMember?.plan_duration_days
+                  ? `${editingMember.plan_duration_days}-day plan · auto-filled from the start date`
+                  : 'Adjust manually if needed.'
+              }
+            />
+          </div>
+
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-elevated/50 p-3.5">
+            <input
+              type="checkbox"
+              checked={editPaid}
+              onChange={(event) => setEditPaid(event.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-line accent-[#123C31]"
+            />
+            <span>
+              <span className="block text-[13px] font-semibold text-ink">Mark as Paid</span>
+              <span className="mt-0.5 block text-[11px] leading-4 text-muted">
+                Untick to mark Not Paid and deactivate this member's plan at your gym.
+              </span>
+            </span>
+          </label>
+
+          {editError ? (
+            <div
+              role="alert"
+              className="flex items-start gap-2 rounded-xl border border-danger/15 bg-danger-soft px-3 py-2 text-[11px] leading-5 text-danger"
+            >
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              {editError}
+            </div>
+          ) : null}
+        </div>
+      </Modal>
     </div>
   )
 }
+

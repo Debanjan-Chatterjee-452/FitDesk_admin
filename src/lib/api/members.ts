@@ -30,7 +30,7 @@ export function setMemberActive(userId: string, active: boolean) {
   })
 }
 
-export function adjustMembershipDates(membershipId: string, startsOn: string) {
+export async function adjustMembershipDates(membershipId: string, startsOn: string) {
   return callRpc<{ membership_id: string; starts_on: string; ends_on: string; duration_days: number }>(
     'admin_adjust_membership_dates',
     { p_membership_id: membershipId, p_starts_on: startsOn },
@@ -45,6 +45,30 @@ export function getMemberStatusCounts() {
   return callRpc<{ all: number; pending: number; paid: number; not_paid: number; left: number }>(
     'admin_member_status_counts',
   )
+}
+
+export async function updateMemberMembership(input: {
+  userId: string
+  startsOn: string
+  endsOn: string
+  isPaid: boolean
+}) {
+  try {
+    return await callRpc<{
+      user_id: string
+      membership_id: string | null
+      starts_on: string
+      ends_on: string
+      is_paid: boolean
+    }>('admin_update_member_membership', {
+      p_user_id: input.userId,
+      p_starts_on: input.startsOn,
+      p_ends_on: input.endsOn,
+      p_is_paid: input.isPaid,
+    })
+  } catch (error) {
+    throw toAppError(error)
+  }
 }
 
 export async function cancelMembership(membershipId: string, reason: string) {

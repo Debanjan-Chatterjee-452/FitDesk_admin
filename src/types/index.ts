@@ -129,6 +129,8 @@ export interface MemberRow {
   avatar_path: string | null
   joined_at: string
   plan_name: string | null
+  plan_package_id?: string | null
+  plan_duration_days?: number | null
   membership_status: MembershipState | null
   membership_id: string | null
   starts_on: string | null
